@@ -1,0 +1,1161 @@
+<h1 id="artifacts--serverless-architecture-and-implementation-plan-final">ARtifacts — Serverless Architecture and Implementation Plan (Final)</h1>
+<hr>
+<h2 id="document-information">Document Information</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Document Version</strong></td>
+<td>4.2 (Serverless Edition - Final)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>✅ Approved for Implementation</td>
+</tr>
+<tr>
+<td><strong>Last Updated</strong></td>
+<td>August 29, 2026</td>
+</tr>
+<tr>
+<td><strong>Target Audience</strong></td>
+<td>Development Team, Museum Staff, Capstone Panel</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<h3 id="architecture-overview">Architecture Overview</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">                        ARtifacts Platform
+                                │
+          ┌─────────────────────┼─────────────────────┐
+          │                     │                     │
+          ▼                     ▼                     ▼
+ ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+ │  Mobile AR App  │   │   Payload CMS    │   │ Public Website  │
+ │                 │   │                 │   │                 │
+ │ Unity           │   │ Vercel          │   │ Vercel          │
+ │ C#              │   │ Next.js         │   │ Next.js         │
+ │ AR Foundation   │   │ TypeScript      │   │ TypeScript      │
+ │ ARCore          │   │                 │   │                 │
+ │ Android         │   │ Admin Panel     │   │ Showcase        │
+ └────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+          │                     │                     │
+          │                     │                     │
+          ▼                     ▼                     ▼
+                   ┌─────────────────────────┐
+                   │      Application APIs   │
+                   │                         │
+                   │ Payload API (Vercel)    │
+                   │ Express API (Render)    │
+                   └────────────┬────────────┘
+                                │
+                         ┌──────▼──────┐
+                         │  PostgreSQL │
+                         │             │
+                         │ Neon (CMS)  │
+                         │ Neon (App)  │
+                         └─────────────┘
+
+                         Large media
+                              │
+                              ▼
+                        Cloudflare R2
+                              │
+                              ▼
+                            CDN</code></pre><h3 id="deployment-model">Deployment Model</h3>
+<p>This architecture uses a <strong>managed multi-platform deployment</strong>:</p>
+<table>
+<thead>
+<tr>
+<th>Component</th>
+<th>Platform</th>
+<th>Model</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Payload CMS</strong></td>
+<td>Vercel</td>
+<td>Serverless Functions</td>
+</tr>
+<tr>
+<td><strong>Express API</strong></td>
+<td>Render</td>
+<td>Managed Web Service (can sleep)</td>
+</tr>
+<tr>
+<td><strong>PostgreSQL</strong></td>
+<td>Neon</td>
+<td>Serverless PostgreSQL</td>
+</tr>
+<tr>
+<td><strong>Object Storage</strong></td>
+<td>Cloudflare R2</td>
+<td>Managed Object Storage</td>
+</tr>
+</tbody></table>
+<h3 id="core-principle">Core Principle</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Hosting</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Museum Content</strong></td>
+<td>Payload CMS</td>
+<td>Vercel (serverless)</td>
+</tr>
+<tr>
+<td><strong>Game/User Data</strong></td>
+<td>Express API</td>
+<td>Render (managed web service)</td>
+</tr>
+<tr>
+<td><strong>AR Experience</strong></td>
+<td>Unity</td>
+<td>Mobile app (no hosting)</td>
+</tr>
+<tr>
+<td><strong>Public Presentation</strong></td>
+<td>Next.js</td>
+<td>Vercel (serverless)</td>
+</tr>
+<tr>
+<td><strong>CMS Database</strong></td>
+<td>Neon PostgreSQL</td>
+<td>Managed serverless</td>
+</tr>
+<tr>
+<td><strong>App Database</strong></td>
+<td>Neon PostgreSQL</td>
+<td>Managed serverless</td>
+</tr>
+<tr>
+<td><strong>Media Storage</strong></td>
+<td>Cloudflare R2</td>
+<td>Managed object storage</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-what-changes-without-a-vps">1. What Changes Without a VPS</h2>
+<h3 id="11-what-stays-the-same">1.1 What Stays the Same</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>Status</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Unity mobile app</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>Payload CMS code</td>
+<td>No change (deployment method changes)</td>
+</tr>
+<tr>
+<td>Express API code</td>
+<td>No change (deployment method changes)</td>
+</tr>
+<tr>
+<td>Content models</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>API endpoints</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>Database schema</td>
+<td>No change</td>
+</tr>
+<tr>
+<td>R2 media storage</td>
+<td>No change</td>
+</tr>
+</tbody></table>
+<h3 id="12-what-changes">1.2 What Changes</h3>
+<table>
+<thead>
+<tr>
+<th>Aspect</th>
+<th>With VPS</th>
+<th>Without VPS</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Server management</strong></td>
+<td>You manage OS, security, updates</td>
+<td>Platform handles everything</td>
+</tr>
+<tr>
+<td><strong>Deployment</strong></td>
+<td>SSH + <code>docker-compose up -d</code></td>
+<td><code>git push</code> triggers auto-deploy</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>Self-hosted on VPS</td>
+<td>Managed Neon PostgreSQL</td>
+</tr>
+<tr>
+<td><strong>Cost</strong></td>
+<td>Free (Oracle) or paid VPS</td>
+<td>Free tiers (subject to limits)</td>
+</tr>
+<tr>
+<td><strong>Cold starts</strong></td>
+<td>None (always running)</td>
+<td>Possible (Render sleeps after 15 min)</td>
+</tr>
+<tr>
+<td><strong>Control</strong></td>
+<td>Full control</td>
+<td>Platform limitations apply</td>
+</tr>
+<tr>
+<td><strong>Docker</strong></td>
+<td>Required</td>
+<td>Not required</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-component-by-component-hosting-plan">2. Component-by-Component Hosting Plan</h2>
+<h3 id="21-payload-cms--vercel">2.1 Payload CMS → Vercel</h3>
+<p><strong>Why Vercel:</strong> Payload is built on Next.js and has first-class Vercel support. Vercel offers a generous free tier and one-click deployment.</p>
+<p><strong>Vercel Free Tier (Hobby Plan):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Projects</td>
+<td>200</td>
+</tr>
+<tr>
+<td>Deployments per day</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Bandwidth</td>
+<td>100 GB/month</td>
+</tr>
+<tr>
+<td>Serverless execution</td>
+<td>100 GB-hours/month</td>
+</tr>
+<tr>
+<td>Build minutes</td>
+<td>6,000 minutes/month</td>
+</tr>
+<tr>
+<td>Blob Storage</td>
+<td>1 GB (not used for media)</td>
+</tr>
+<tr>
+<td>Static file uploads</td>
+<td>100 MB</td>
+</tr>
+<tr>
+<td>Disk size</td>
+<td>32 GB</td>
+</tr>
+</tbody></table>
+<p><strong>Payload on Vercel Setup:</strong></p>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># 1. Create a new Payload project</span>
+npx create-payload-app@latest
+
+<span class="hljs-comment"># 2. Choose the appropriate template for your Payload version</span>
+<span class="hljs-comment"># For Payload 3.x, use the standard template:</span>
+npx create-payload-app@latest my-payload-app -t blank
+
+<span class="hljs-comment"># 3. Install PostgreSQL adapter</span>
+pnpm add @payloadcms/db-postgres
+
+<span class="hljs-comment"># 4. Install storage adapter for R2</span>
+pnpm add @payloadcms/storage-s3</code></pre><p><strong>Payload Configuration:</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// payload.config.ts</span>
+<span class="hljs-keyword">import</span> { postgresAdapter } <span class="hljs-keyword">from</span> <span class="hljs-string">'@payloadcms/db-postgres'</span>
+<span class="hljs-keyword">import</span> { s3Storage } <span class="hljs-keyword">from</span> <span class="hljs-string">'@payloadcms/storage-s3'</span>
+<span class="hljs-keyword">import</span> { buildConfig } <span class="hljs-keyword">from</span> <span class="hljs-string">'payload'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">default</span> <span class="hljs-title function_">buildConfig</span>({
+  <span class="hljs-comment">// Use standard PostgreSQL adapter with Neon connection string</span>
+  <span class="hljs-attr">db</span>: <span class="hljs-title function_">postgresAdapter</span>({
+    <span class="hljs-attr">pool</span>: {
+      <span class="hljs-attr">connectionString</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">DATABASE_URL</span>, <span class="hljs-comment">// Neon CMS connection string</span>
+    },
+  }),
+  
+  <span class="hljs-comment">// Use S3-compatible adapter for R2</span>
+  <span class="hljs-attr">plugins</span>: [
+    <span class="hljs-title function_">s3Storage</span>({
+      <span class="hljs-attr">collections</span>: {
+        <span class="hljs-attr">media</span>: <span class="hljs-literal">true</span>,
+      },
+      <span class="hljs-attr">config</span>: {
+        <span class="hljs-attr">endpoint</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">R2_ENDPOINT</span>,
+        <span class="hljs-attr">region</span>: <span class="hljs-string">'auto'</span>,
+        <span class="hljs-attr">credentials</span>: {
+          <span class="hljs-attr">accessKeyId</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">R2_ACCESS_KEY_ID</span>,
+          <span class="hljs-attr">secretAccessKey</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">R2_SECRET_ACCESS_KEY</span>,
+        },
+      },
+      <span class="hljs-attr">bucket</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">R2_BUCKET</span>,
+    }),
+  ],
+})</code></pre><p><strong>Enable Drafts for Each Collection:</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// collections/Artifacts.ts</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-title class_">Artifacts</span>: <span class="hljs-title class_">CollectionConfig</span> = {
+  <span class="hljs-attr">slug</span>: <span class="hljs-string">'artifacts'</span>,
+  <span class="hljs-attr">versions</span>: {
+    <span class="hljs-attr">drafts</span>: <span class="hljs-literal">true</span>,  <span class="hljs-comment">// ✅ Required for _status to work</span>
+  },
+  <span class="hljs-attr">fields</span>: [
+    <span class="hljs-comment">// ... fields</span>
+  ],
+}
+
+<span class="hljs-comment">// collections/Exhibits.ts</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-title class_">Exhibits</span>: <span class="hljs-title class_">CollectionConfig</span> = {
+  <span class="hljs-attr">slug</span>: <span class="hljs-string">'exhibits'</span>,
+  <span class="hljs-attr">versions</span>: {
+    <span class="hljs-attr">drafts</span>: <span class="hljs-literal">true</span>,  <span class="hljs-comment">// ✅ Required for _status to work</span>
+  },
+  <span class="hljs-attr">fields</span>: [
+    <span class="hljs-comment">// ... fields</span>
+  ],
+}</code></pre><p><strong>Environment Variables (Vercel):</strong></p>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># Vercel Environment Variables</span>
+DATABASE_URL=postgresql://... (Neon CMS connection string)
+PAYLOAD_SECRET=your_secret_key
+NEXT_PUBLIC_SERVER_URL=https://your-app.vercel.app
+
+<span class="hljs-comment"># R2 Storage</span>
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET=artifacts-media
+R2_ENDPOINT=https://your-account.r2.cloudflarestorage.com
+
+<span class="hljs-comment"># Service token for Express integration</span>
+SERVICE_TOKEN=your_service_token_here
+
+<span class="hljs-comment"># Payload API URL (for Express to call)</span>
+PAYLOAD_API_URL=https://your-payload.vercel.app/api</code></pre><hr>
+<h3 id="22-express-api--render">2.2 Express API → Render</h3>
+<p><strong>Why Render:</strong> Render offers a straightforward Node.js deployment with a free tier that's suitable for your Express API.</p>
+<p><strong>Render Free Tier (Hobby Plan):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Web service RAM</td>
+<td>512 MB</td>
+</tr>
+<tr>
+<td>Web service CPU</td>
+<td>0.1 vCPU</td>
+</tr>
+<tr>
+<td>Free instance hours</td>
+<td>750 hours/month</td>
+</tr>
+<tr>
+<td>Services per workspace</td>
+<td>25</td>
+</tr>
+<tr>
+<td>Bandwidth</td>
+<td>5 GB/month</td>
+</tr>
+<tr>
+<td>Spin-down</td>
+<td>After 15 minutes inactivity</td>
+</tr>
+<tr>
+<td>Spin-up time</td>
+<td>~1 minute</td>
+</tr>
+</tbody></table>
+<p><strong>Express on Render Setup:</strong></p>
+<pre tabindex="0"><code class="hljs language-yaml"><span class="hljs-comment"># render.yaml</span>
+<span class="hljs-attr">services:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">type:</span> <span class="hljs-string">web</span>
+    <span class="hljs-attr">name:</span> <span class="hljs-string">artifacts-express-api</span>
+    <span class="hljs-attr">runtime:</span> <span class="hljs-string">node</span>
+    <span class="hljs-attr">repo:</span> <span class="hljs-string">https://github.com/your-org/artifacts-project</span>
+    <span class="hljs-attr">plan:</span> <span class="hljs-string">free</span>
+    <span class="hljs-attr">rootDir:</span> <span class="hljs-string">express-api</span>
+    <span class="hljs-attr">buildCommand:</span> <span class="hljs-string">|
+      npm install -g pnpm
+      pnpm install --frozen-lockfile
+      pnpm build
+</span>    <span class="hljs-attr">startCommand:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">start</span>
+    <span class="hljs-attr">envVars:</span>
+      <span class="hljs-comment"># ✅ Use explicit Neon connection string (DO NOT commit with password)</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">DATABASE_URL</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>  <span class="hljs-comment"># ✅ Set value in Render dashboard</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">JWT_SECRET</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">PAYLOAD_API_URL</span>
+        <span class="hljs-attr">value:</span> <span class="hljs-string">https://your-payload.vercel.app/api</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">SERVICE_TOKEN</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">PORT</span>
+        <span class="hljs-attr">value:</span> <span class="hljs-number">5000</span>
+    <span class="hljs-attr">healthCheckPath:</span> <span class="hljs-string">/health</span></code></pre><p><strong>Important Configuration Details:</strong></p>
+<ol>
+<li><strong>Listen on <code>0.0.0.0</code></strong> - Required for Render to route traffic:</li>
+</ol>
+<pre tabindex="0"><code class="hljs language-javascript"><span class="hljs-comment">// app.js</span>
+<span class="hljs-keyword">const</span> port = process.<span class="hljs-property">env</span>.<span class="hljs-property">PORT</span> || <span class="hljs-number">5000</span>
+app.<span class="hljs-title function_">listen</span>(port, <span class="hljs-string">'0.0.0.0'</span>, <span class="hljs-function">() =&gt;</span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Server running on port <span class="hljs-subst">${port}</span>`</span>)
+})</code></pre><ol start="2">
+<li><p><strong>Use <code>PORT</code> environment variable</strong> - Render sets this dynamically</p>
+</li>
+<li><p><strong>Add <code>/health</code> endpoint (no authentication required):</strong></p>
+</li>
+</ol>
+<pre tabindex="0"><code class="hljs language-javascript">app.<span class="hljs-title function_">get</span>(<span class="hljs-string">'/health'</span>, <span class="hljs-function">(<span class="hljs-params">req, res</span>) =&gt;</span> {
+  res.<span class="hljs-title function_">status</span>(<span class="hljs-number">200</span>).<span class="hljs-title function_">json</span>({ <span class="hljs-attr">status</span>: <span class="hljs-string">'ok'</span> })
+})</code></pre><p><strong>Set <code>DATABASE_URL</code> in Render Dashboard:</strong></p>
+<ul>
+<li>Do NOT commit the Neon connection string to <code>render.yaml</code></li>
+<li>Use <code>sync: false</code> and set the value in the Render dashboard</li>
+<li>This keeps database credentials out of version control</li>
+</ul>
+<hr>
+<h3 id="23-public-website--vercel">2.3 Public Website → Vercel</h3>
+<p><strong>Why Vercel:</strong> Your Next.js public website is a perfect fit for Vercel's static and serverless hosting.</p>
+<p><strong>Vercel Free Tier:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Bandwidth</td>
+<td>100 GB/month</td>
+</tr>
+<tr>
+<td>Build minutes</td>
+<td>6,000/month</td>
+</tr>
+<tr>
+<td>Serverless execution</td>
+<td>100 GB-hours/month</td>
+</tr>
+</tbody></table>
+<p><strong>Public Website on Vercel Setup:</strong></p>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># 1. Create Next.js app</span>
+npx create-next-app@latest public-website --typescript
+
+<span class="hljs-comment"># 2. Fetch content from Payload API using REST</span></code></pre><pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// lib/payload-client.ts</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">getPublishedArtifacts</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetch</span>(
+    <span class="hljs-string">`<span class="hljs-subst">${process.env.NEXT_PUBLIC_PAYLOAD_URL}</span>/artifacts?where[_status][equals]=published`</span>,
+    {
+      <span class="hljs-attr">headers</span>: {
+        <span class="hljs-string">'Content-Type'</span>: <span class="hljs-string">'application/json'</span>,
+      },
+      <span class="hljs-comment">// ✅ Add revalidation for caching</span>
+      <span class="hljs-attr">next</span>: { <span class="hljs-attr">revalidate</span>: <span class="hljs-number">60</span> }, <span class="hljs-comment">// Revalidate every 60 seconds</span>
+    }
+  )
+  
+  <span class="hljs-keyword">if</span> (!response.<span class="hljs-property">ok</span>) {
+    <span class="hljs-keyword">throw</span> <span class="hljs-keyword">new</span> <span class="hljs-title class_">Error</span>(<span class="hljs-string">`Failed to fetch artifacts: <span class="hljs-subst">${response.status}</span>`</span>)
+  }
+  
+  <span class="hljs-keyword">const</span> data = <span class="hljs-keyword">await</span> response.<span class="hljs-title function_">json</span>()
+  <span class="hljs-keyword">return</span> data.<span class="hljs-property">docs</span>
+}</code></pre><p><strong>Environment Variables:</strong></p>
+<pre tabindex="0"><code class="hljs language-bash">NEXT_PUBLIC_PAYLOAD_URL=https://your-payload.vercel.app/api
+NEXT_PUBLIC_APP_URL=https://your-app.onrender.com</code></pre><p><strong>Cache/Revalidation Policy:</strong> The public website should implement incremental static regeneration (ISR) or revalidation to ensure content updates are reflected without manual rebuilding.</p>
+<p><strong>Critical Design Rule:</strong> The public website should <strong>never</strong> import Payload configuration directly or access the database directly. It must use HTTP REST calls to the Payload API.</p>
+<hr>
+<h3 id="24-database--neon-postgresql">2.4 Database → Neon PostgreSQL</h3>
+<p><strong>Why Neon:</strong> Neon is a serverless PostgreSQL database with a generous free tier, perfect for serverless deployments.</p>
+<p><strong>Neon Free Tier (as of August 2026):</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Storage</td>
+<td>0.5 GB per project</td>
+</tr>
+<tr>
+<td>Projects</td>
+<td>100</td>
+</tr>
+<tr>
+<td>Compute Units</td>
+<td>100 CU-hours/month</td>
+</tr>
+<tr>
+<td>Branches</td>
+<td>10 per project</td>
+</tr>
+<tr>
+<td>Restore window</td>
+<td>6 hours (1 GB cap)</td>
+</tr>
+<tr>
+<td>Scale-to-zero</td>
+<td>After 5 minutes idle</td>
+</tr>
+<tr>
+<td>Wake-up time</td>
+<td>Milliseconds</td>
+</tr>
+</tbody></table>
+<p><strong>Recommended Setup: Two Neon Projects</strong></p>
+<pre tabindex="0"><code class="hljs language-plaintext">Neon Organization
+├── Project: artifacts-cms-db
+│   └── Schema: public (Payload-owned)
+│       ├── artifacts
+│       ├── exhibits
+│       ├── media
+│       └── achievements
+│
+└── Project: artifacts-app-db
+    └── Schema: public (Express-owned)
+        ├── users
+        ├── sessions
+        ├── game_sessions
+        ├── puzzle_attempts
+        ├── pearl_transactions
+        └── reports</code></pre><p><strong>Important:</strong> With two separate Neon projects, <strong>direct database views across projects are not possible</strong>. Reports are accessed through the Express API, not directly.</p>
+<p><strong>Neon Setup:</strong></p>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># 1. Sign up at neon.tech</span>
+<span class="hljs-comment"># 2. Create two projects: artifacts-cms and artifacts-app</span>
+<span class="hljs-comment"># 3. Copy connection strings for each</span>
+
+<span class="hljs-comment"># CMS Database URL (for Vercel)</span>
+DATABASE_URL=postgresql://user:pass@ep-xxx.neon.tech/artifacts-cms
+
+<span class="hljs-comment"># App Database URL (for Render) - Set in Render dashboard, NOT in render.yaml</span></code></pre><hr>
+<h3 id="25-media-storage--cloudflare-r2">2.5 Media Storage → Cloudflare R2</h3>
+<p><strong>No change from the original plan.</strong> Use Cloudflare R2 exclusively.</p>
+<p><strong>Cloudflare R2 Free Tier:</strong></p>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Limit</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Storage</td>
+<td>10 GB-month</td>
+</tr>
+<tr>
+<td>Class A operations</td>
+<td>1 million/month</td>
+</tr>
+<tr>
+<td>Class B operations</td>
+<td>10 million/month</td>
+</tr>
+<tr>
+<td>Egress (data transfer)</td>
+<td><strong>Free</strong></td>
+</tr>
+</tbody></table>
+<p><strong>R2 Versioning:</strong> Verify that R2 versioning is available and enabled for your account. Document the exact recovery process.</p>
+<hr>
+<h2 id="3-critical-architecture-decisions">3. Critical Architecture Decisions</h2>
+<h3 id="31-assessment-security">3.1 Assessment Security</h3>
+<p><strong>Problem:</strong> The artifact model contains <code>is_correct</code>, but the public API must not return correct answers.</p>
+<p><strong>Solution:</strong> Hide <code>is_correct</code> at the Payload field access level, AND protect the Express endpoint.</p>
+<p><strong>Payload Field Access Control:</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// collections/Artifacts.ts</span>
+{
+  <span class="hljs-attr">name</span>: <span class="hljs-string">'assessment_options'</span>,
+  <span class="hljs-attr">type</span>: <span class="hljs-string">'array'</span>,
+  <span class="hljs-attr">fields</span>: [
+    {
+      <span class="hljs-attr">name</span>: <span class="hljs-string">'text'</span>,
+      <span class="hljs-attr">type</span>: <span class="hljs-string">'text'</span>,
+    },
+    {
+      <span class="hljs-attr">name</span>: <span class="hljs-string">'is_correct'</span>,
+      <span class="hljs-attr">type</span>: <span class="hljs-string">'checkbox'</span>,
+      <span class="hljs-comment">// ✅ Hide from public API</span>
+      <span class="hljs-attr">access</span>: {
+        <span class="hljs-attr">read</span>: <span class="hljs-function">(<span class="hljs-params">{ req }</span>) =&gt;</span> {
+          <span class="hljs-comment">// Only allow admin/editor to see correct answers</span>
+          <span class="hljs-keyword">return</span> req.<span class="hljs-property">user</span>?.<span class="hljs-property">role</span> === <span class="hljs-string">'admin'</span> || req.<span class="hljs-property">user</span>?.<span class="hljs-property">role</span> === <span class="hljs-string">'editor'</span>
+        },
+      },
+    },
+  ],
+}</code></pre><p><strong>Express Assessment Endpoint (Protected):</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// Express service</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">class</span> <span class="hljs-title class_">AssessmentService</span> {
+  <span class="hljs-comment">// ✅ Use server-to-server auth, NOT client-facing</span>
+  <span class="hljs-keyword">async</span> <span class="hljs-title function_">getAssessment</span>(<span class="hljs-params"><span class="hljs-attr">artifactId</span>: <span class="hljs-built_in">string</span></span>) {
+    <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetch</span>(
+      <span class="hljs-string">`<span class="hljs-subst">${process.env.PAYLOAD_API_URL}</span>/artifacts/<span class="hljs-subst">${artifactId}</span>`</span>,
+      {
+        <span class="hljs-attr">headers</span>: {
+          <span class="hljs-comment">// Server-to-server authentication (not exposed to Unity)</span>
+          <span class="hljs-string">'x-service-token'</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">SERVICE_TOKEN</span>,
+        },
+      }
+    )
+    <span class="hljs-keyword">const</span> artifact = <span class="hljs-keyword">await</span> response.<span class="hljs-title function_">json</span>()
+    
+    <span class="hljs-comment">// Return only questions without is_correct</span>
+    <span class="hljs-keyword">return</span> {
+      <span class="hljs-attr">questions</span>: artifact.<span class="hljs-property">assessment_options</span>.<span class="hljs-title function_">map</span>(<span class="hljs-function">(<span class="hljs-params"><span class="hljs-attr">opt</span>: <span class="hljs-built_in">any</span></span>) =&gt;</span> ({
+        <span class="hljs-attr">text</span>: opt.<span class="hljs-property">text</span>,
+        <span class="hljs-comment">// is_correct is removed by Payload access control</span>
+      })),
+    }
+  }
+  
+  <span class="hljs-keyword">async</span> <span class="hljs-title function_">submitAssessment</span>(<span class="hljs-params"><span class="hljs-attr">attempt</span>: <span class="hljs-title class_">AssessmentAttempt</span></span>) {
+    <span class="hljs-comment">// Score internally</span>
+    <span class="hljs-comment">// Never expose is_correct to Unity client</span>
+    <span class="hljs-keyword">const</span> score = <span class="hljs-variable language_">this</span>.<span class="hljs-title function_">calculateScore</span>(attempt)
+    <span class="hljs-keyword">return</span> { score, <span class="hljs-attr">total</span>: attempt.<span class="hljs-property">totalQuestions</span> }
+  }
+}</code></pre><h3 id="32-service-token-authentication-server-side-only">3.2 Service Token Authentication (Server-Side Only)</h3>
+<p><strong>🚨 CRITICAL: Service tokens must NEVER be sent from browser-side code.</strong></p>
+<p><strong>Correct (Server Component in Payload):</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// In Payload server component or custom endpoint</span>
+<span class="hljs-comment">// ✅ Runs on server, token is safe</span>
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-title function_">getAnalyticsData</span> = <span class="hljs-keyword">async</span> (<span class="hljs-params"></span>) =&gt; {
+  <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetch</span>(
+    <span class="hljs-string">'https://your-api.onrender.com/api/analytics/overview'</span>,
+    {
+      <span class="hljs-attr">headers</span>: {
+        <span class="hljs-string">'x-service-token'</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">SERVICE_TOKEN</span>, <span class="hljs-comment">// ✅ Safe on server</span>
+      },
+    }
+  )
+  <span class="hljs-keyword">return</span> response.<span class="hljs-title function_">json</span>()
+}</code></pre><p><strong>❌ INCORRECT (Browser-side component):</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// In Payload admin component (client-side)</span>
+<span class="hljs-comment">// ❌ NEVER DO THIS - token would be exposed to browser</span>
+<span class="hljs-keyword">const</span> <span class="hljs-title function_">fetchAnalytics</span> = <span class="hljs-keyword">async</span> (<span class="hljs-params"></span>) =&gt; {
+  <span class="hljs-keyword">const</span> response = <span class="hljs-keyword">await</span> <span class="hljs-title function_">fetch</span>(
+    <span class="hljs-string">'https://your-api.onrender.com/api/analytics/overview'</span>,
+    {
+      <span class="hljs-attr">headers</span>: {
+        <span class="hljs-string">'x-service-token'</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">SERVICE_TOKEN</span>, <span class="hljs-comment">// ❌ EXPOSED!</span>
+      },
+    }
+  )
+}</code></pre><h3 id="33-reports-access-cross-project">3.3 Reports Access (Cross-Project)</h3>
+<p><strong>Problem:</strong> With two separate Neon projects, Payload cannot directly query Express reports.</p>
+<p><strong>Solution:</strong> Express API is the authoritative owner of reports.</p>
+<pre tabindex="0"><code class="hljs language-plaintext">Payload Admin Component (Server Component)
+         ↓
+Authenticated HTTP Request (with SERVICE_TOKEN)
+         ↓
+Express API (GET /api/analytics/reports)
+         ↓
+Neon App Database
+         ↓
+Returns reports to Payload Admin</code></pre><p><strong>Express endpoint:</strong></p>
+<pre tabindex="0"><code class="hljs language-typescript">app.<span class="hljs-title function_">get</span>(<span class="hljs-string">'/api/analytics/reports'</span>, verifyServiceToken, <span class="hljs-title function_">async</span> (req, res) =&gt; {
+  <span class="hljs-keyword">const</span> reports = <span class="hljs-keyword">await</span> db.<span class="hljs-property">query</span>.<span class="hljs-property">reports</span>.<span class="hljs-title function_">findMany</span>()
+  res.<span class="hljs-title function_">json</span>(reports)
+})</code></pre><p><strong>Key:</strong> Reports are <strong>NOT</strong> stored in Payload collections. Express is the authoritative owner.</p>
+<hr>
+<h2 id="4-data-flow-summary">4. Data Flow Summary</h2>
+<h3 id="41-recommended-final-data-flow">4.1 Recommended Final Data Flow</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Museum staff
+  → Payload Admin on Vercel
+  → Neon CMS database
+  → Cloudflare R2 (media)
+
+Unity app
+  → Express API on Render
+  → Neon application database
+  → Payload REST API for published content
+  → R2/CDN for media
+
+Public website
+  → Payload REST API (HTTP requests, with ISR/revalidation)
+  → Neon CMS database
+
+Analytics (Service-to-Service, Server-Side)
+  → Payload Server Component
+  → Express Analytics Endpoint (with SERVICE_TOKEN)
+  → Neon application database
+
+Reports (Service-to-Service, Server-Side)
+  → Payload Server Component
+  → Express Reports Endpoint (with SERVICE_TOKEN)
+  → Neon application database</code></pre><hr>
+<h2 id="5-github-actions-cicd">5. GitHub Actions CI/CD</h2>
+<h3 id="51-testing-pipeline-not-deployment">5.1 Testing Pipeline (Not Deployment)</h3>
+<p><strong>Recommended:</strong> Use Vercel and Render's built-in Git-based deployment. GitHub Actions handles testing only.</p>
+<pre tabindex="0"><code class="hljs language-yaml"><span class="hljs-comment"># .github/workflows/test.yml</span>
+<span class="hljs-attr">name:</span> <span class="hljs-string">Test</span>
+
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">push:</span>
+    <span class="hljs-attr">branches:</span> [<span class="hljs-string">main</span>, <span class="hljs-string">staging</span>]
+  <span class="hljs-attr">pull_request:</span>
+    <span class="hljs-attr">branches:</span> [<span class="hljs-string">main</span>]
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">test-payload:</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">defaults:</span>
+      <span class="hljs-attr">run:</span>
+        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">payload-cms</span>  <span class="hljs-comment"># ✅ Set working directory</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Setup</span> <span class="hljs-string">Node.js</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/setup-node@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">node-version:</span> <span class="hljs-string">'20'</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">pnpm/action-setup@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">version:</span> <span class="hljs-number">11</span>  <span class="hljs-comment"># ✅ Pin specific version</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">dependencies</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">install</span> <span class="hljs-string">--frozen-lockfile</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Type</span> <span class="hljs-string">check</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">type-check</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Lint</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">lint</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Test</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">test</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Build</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">build</span>
+
+  <span class="hljs-attr">test-express:</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">defaults:</span>
+      <span class="hljs-attr">run:</span>
+        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">express-api</span>  <span class="hljs-comment"># ✅ Set working directory</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Setup</span> <span class="hljs-string">Node.js</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/setup-node@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">node-version:</span> <span class="hljs-string">'20'</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">pnpm/action-setup@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">version:</span> <span class="hljs-number">11</span>  <span class="hljs-comment"># ✅ Pin specific version</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">dependencies</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">install</span> <span class="hljs-string">--frozen-lockfile</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Type</span> <span class="hljs-string">check</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">type-check</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Lint</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">lint</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Test</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">test</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Build</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">build</span></code></pre><p><strong>Required Scripts in Each Service:</strong></p>
+<pre tabindex="0"><code class="hljs language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"scripts"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"type-check"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"tsc --noEmit"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"lint"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"eslint src/**/*.ts"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"test"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"jest"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"build"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"tsc"</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span></code></pre><hr>
+<h2 id="6-backup-and-recovery">6. Backup and Recovery</h2>
+<h3 id="61-backup-strategy">6.1 Backup Strategy</h3>
+<p><strong>Critical:</strong> Platform backups are not sufficient. Implement the following:</p>
+<table>
+<thead>
+<tr>
+<th>Requirement</th>
+<th>Implementation</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Export frequency</strong></td>
+<td>Daily automated export to off-provider location</td>
+</tr>
+<tr>
+<td><strong>Retention period</strong></td>
+<td>30 days minimum</td>
+</tr>
+<tr>
+<td><strong>Off-provider backup</strong></td>
+<td>Separate cloud storage (e.g., another provider, not just R2)</td>
+</tr>
+<tr>
+<td><strong>Restore testing</strong></td>
+<td>Quarterly restore test</td>
+</tr>
+<tr>
+<td><strong>R2 asset recovery</strong></td>
+<td>Enable versioning (verify availability)</td>
+</tr>
+<tr>
+<td><strong>Account recovery</strong></td>
+<td>Document recovery procedures for each platform</td>
+</tr>
+</tbody></table>
+<h3 id="62-backup-script">6.2 Backup Script</h3>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># backup.sh</span>
+<span class="hljs-comment">#!/bin/bash</span>
+DATE=$(<span class="hljs-built_in">date</span> +%Y%m%d_%H%M%S)
+BACKUP_DIR=<span class="hljs-string">"./backups"</span>
+
+<span class="hljs-comment"># Export Neon CMS database</span>
+PGSSLMODE=require pg_dump <span class="hljs-variable">$NEON_CMS_URL</span> &gt; <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/cms_<span class="hljs-variable">$DATE</span>.sql"</span>
+
+<span class="hljs-comment"># Export Neon App database</span>
+PGSSLMODE=require pg_dump <span class="hljs-variable">$NEON_APP_URL</span> &gt; <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/app_<span class="hljs-variable">$DATE</span>.sql"</span>
+
+<span class="hljs-comment"># Compress</span>
+gzip <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/cms_<span class="hljs-variable">$DATE</span>.sql"</span>
+gzip <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/app_<span class="hljs-variable">$DATE</span>.sql"</span>
+
+<span class="hljs-comment"># Upload to off-provider backup location</span>
+<span class="hljs-comment"># (Not Cloudflare R2 - use a different provider)</span>
+rclone copy <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/"</span> remote:backup-bucket/ --include <span class="hljs-string">"*.sql.gz"</span>
+
+<span class="hljs-comment"># Keep last 30 days locally</span>
+find <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>"</span> -name <span class="hljs-string">"*.sql.gz"</span> -mtime +30 -delete
+
+<span class="hljs-comment"># Keep last 30 days on remote (already handled by rclone sync)</span></code></pre><h3 id="63-restore-commands">6.3 Restore Commands</h3>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># Restore CMS database</span>
+PGSSLMODE=require psql <span class="hljs-variable">$NEON_CMS_URL</span> &lt; backups/cms_20260829_120000.sql
+
+<span class="hljs-comment"># Restore App database</span>
+PGSSLMODE=require psql <span class="hljs-variable">$NEON_APP_URL</span> &lt; backups/app_20260829_120000.sql</code></pre><h3 id="64-r2-asset-recovery">6.4 R2 Asset Recovery</h3>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># If using R2 versioning, list versions</span>
+aws s3api list-object-versions --bucket artifacts-media --endpoint-url <span class="hljs-variable">$R2_ENDPOINT</span>
+
+<span class="hljs-comment"># Restore specific version</span>
+aws s3api restore-object --bucket artifacts-media --key models/artifact-001.glb --version-id &lt;version-id&gt;</code></pre><p><strong>Verify R2 versioning:</strong> Confirm that R2 versioning is available and enabled for your account. Document the exact recovery process.</p>
+<hr>
+<h2 id="7-free-tier-limits-and-risks">7. Free Tier Limits and Risks</h2>
+<h3 id="71-wording-do-not-claim-free-forever">7.1 Wording: Do Not Claim "Free Forever"</h3>
+<p><strong>✅ Correct wording:</strong></p>
+<blockquote>
+<p>Expected to fit within current free-tier limits for a small pilot (approximately 1,000-5,000 monthly visitors), subject to provider terms and usage quotas. The architecture is designed for portability if a paid upgrade becomes necessary.</p>
+</blockquote>
+<h3 id="72-verified-free-tier-limits-august-2026">7.2 Verified Free Tier Limits (August 2026)</h3>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Free Tier</th>
+<th>Risk</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Vercel Hobby</td>
+<td>100 GB bandwidth, 6,000 build minutes</td>
+<td>Commercial use restrictions apply</td>
+</tr>
+<tr>
+<td>Render Hobby</td>
+<td>750 hours, 512 MB RAM, spins down after 15 min</td>
+<td>Spin-up delay, 5 GB bandwidth limit</td>
+</tr>
+<tr>
+<td>Neon Free</td>
+<td>0.5 GB storage, 100 projects</td>
+<td>Storage limit reached with many artifacts</td>
+</tr>
+<tr>
+<td>Cloudflare R2</td>
+<td>10 GB storage, free egress</td>
+<td>Storage limit reached with many 3D models</td>
+</tr>
+</tbody></table>
+<h3 id="73-when-free-tier-may-be-insufficient">7.3 When Free Tier May Be Insufficient</h3>
+<table>
+<thead>
+<tr>
+<th>Scenario</th>
+<th>Trigger</th>
+<th>Upgrade Cost</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Render upgrade</strong></td>
+<td>Need no spin-down or more RAM</td>
+<td>$7/month</td>
+</tr>
+<tr>
+<td><strong>Neon upgrade</strong></td>
+<td>Exceed 0.5 GB storage or 100 CU-hours</td>
+<td>~$19/month</td>
+</tr>
+<tr>
+<td><strong>R2 overages</strong></td>
+<td>Exceed 10 GB storage</td>
+<td>$0.015/GB-month</td>
+</tr>
+<tr>
+<td><strong>Vercel overages</strong></td>
+<td>Exceed 100 GB bandwidth</td>
+<td>Pay-as-you-go</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="8-implementation-checklist">8. Implementation Checklist</h2>
+<h3 id="81-phase-1--foundation-week-1">8.1 Phase 1 — Foundation (Week 1)</h3>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Create two Neon databases: <code>artifacts-cms-db</code> and <code>artifacts-app-db</code></li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Copy Neon connection strings (save securely)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up Payload project with standard PostgreSQL adapter</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Enable <code>versions: { drafts: true }</code> for Artifacts and Exhibits</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure Cloudflare R2 (not Vercel Blob)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure Payload field access control for <code>is_correct</code></li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Deploy Payload to Vercel (connect GitHub repo)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify Payload admin panel works</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify Payload published API works</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up Express project with <code>0.0.0.0</code> and <code>PORT</code> configuration</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Add <code>/health</code> endpoint (no auth required)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure Express to read Payload content via API</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set <code>DATABASE_URL</code> in Render dashboard (not in <code>render.yaml</code>)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Deploy Express to Render</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify Express reads published Payload content</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up service token authentication</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify analytics endpoints require SERVICE_TOKEN</li>
+</ul>
+<h3 id="82-phase-2--cms-implementation-week-2-3">8.2 Phase 2 — CMS Implementation (Week 2-3)</h3>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Artifacts collection with access control</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Exhibits collection with drafts enabled</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Achievements collection</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure staff roles (Admin, Editor, Viewer)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Test workflow: Draft → Submit → Approve → Publish</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Test with museum staff</li>
+</ul>
+<h3 id="83-phase-3--integration-week-3-4">8.3 Phase 3 — Integration (Week 3-4)</h3>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Payload dashboard calls Express analytics (server-side)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Payload dashboard calls Express reports (server-side)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches published content from Payload</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity submits assessments to Express (scoring server-side)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity submits game events to Express</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">End-to-end testing</li>
+</ul>
+<hr>
+<h2 id="appendix-a-environment-variables-summary">Appendix A: Environment Variables Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Service</th>
+<th>Platform</th>
+<th>Key Variables</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Payload CMS</strong></td>
+<td>Vercel</td>
+<td><code>DATABASE_URL</code> (Neon CMS), <code>PAYLOAD_SECRET</code>, <code>R2_*</code>, <code>SERVICE_TOKEN</code></td>
+</tr>
+<tr>
+<td><strong>Express API</strong></td>
+<td>Render</td>
+<td><code>DATABASE_URL</code> (Neon App - set in dashboard), <code>JWT_SECRET</code>, <code>PAYLOAD_API_URL</code>, <code>SERVICE_TOKEN</code></td>
+</tr>
+<tr>
+<td><strong>Public Website</strong></td>
+<td>Vercel</td>
+<td><code>NEXT_PUBLIC_PAYLOAD_URL</code>, <code>NEXT_PUBLIC_APP_URL</code></td>
+</tr>
+<tr>
+<td><strong>Neon CMS DB</strong></td>
+<td>Neon</td>
+<td>Connection string (provided by Neon)</td>
+</tr>
+<tr>
+<td><strong>Neon App DB</strong></td>
+<td>Neon</td>
+<td>Connection string (provided by Neon)</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="appendix-b-corrected-configuration-files">Appendix B: Corrected Configuration Files</h2>
+<h3 id="payload-collection-with-access-control">Payload Collection with Access Control</h3>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// collections/Artifacts.ts</span>
+<span class="hljs-keyword">import</span> { <span class="hljs-title class_">CollectionConfig</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'payload'</span>
+
+<span class="hljs-keyword">export</span> <span class="hljs-keyword">const</span> <span class="hljs-title class_">Artifacts</span>: <span class="hljs-title class_">CollectionConfig</span> = {
+  <span class="hljs-attr">slug</span>: <span class="hljs-string">'artifacts'</span>,
+  <span class="hljs-attr">versions</span>: {
+    <span class="hljs-attr">drafts</span>: <span class="hljs-literal">true</span>,  <span class="hljs-comment">// ✅ Required for _status</span>
+  },
+  <span class="hljs-attr">fields</span>: [
+    <span class="hljs-comment">// ... other fields</span>
+    {
+      <span class="hljs-attr">name</span>: <span class="hljs-string">'assessment_options'</span>,
+      <span class="hljs-attr">type</span>: <span class="hljs-string">'array'</span>,
+      <span class="hljs-attr">fields</span>: [
+        {
+          <span class="hljs-attr">name</span>: <span class="hljs-string">'text'</span>,
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'text'</span>,
+        },
+        {
+          <span class="hljs-attr">name</span>: <span class="hljs-string">'is_correct'</span>,
+          <span class="hljs-attr">type</span>: <span class="hljs-string">'checkbox'</span>,
+          <span class="hljs-comment">// ✅ Access control: hide from public</span>
+          <span class="hljs-attr">access</span>: {
+            <span class="hljs-attr">read</span>: <span class="hljs-function">(<span class="hljs-params">{ req }</span>) =&gt;</span> {
+              <span class="hljs-comment">// Only allow admin/editor to see correct answers</span>
+              <span class="hljs-keyword">return</span> req.<span class="hljs-property">user</span>?.<span class="hljs-property">role</span> === <span class="hljs-string">'admin'</span> || req.<span class="hljs-property">user</span>?.<span class="hljs-property">role</span> === <span class="hljs-string">'editor'</span>
+            },
+          },
+        },
+      ],
+    },
+  ],
+}</code></pre><h3 id="express-health-check">Express Health Check</h3>
+<pre tabindex="0"><code class="hljs language-javascript"><span class="hljs-comment">// app.js</span>
+<span class="hljs-keyword">const</span> express = <span class="hljs-built_in">require</span>(<span class="hljs-string">'express'</span>)
+<span class="hljs-keyword">const</span> app = <span class="hljs-title function_">express</span>()
+
+<span class="hljs-comment">// ✅ Health check endpoint (no authentication required)</span>
+app.<span class="hljs-title function_">get</span>(<span class="hljs-string">'/health'</span>, <span class="hljs-function">(<span class="hljs-params">req, res</span>) =&gt;</span> {
+  res.<span class="hljs-title function_">status</span>(<span class="hljs-number">200</span>).<span class="hljs-title function_">json</span>({ 
+    <span class="hljs-attr">status</span>: <span class="hljs-string">'ok'</span>,
+    <span class="hljs-attr">timestamp</span>: <span class="hljs-keyword">new</span> <span class="hljs-title class_">Date</span>().<span class="hljs-title function_">toISOString</span>(),
+  })
+})
+
+<span class="hljs-comment">// ✅ Listen on 0.0.0.0 for Render</span>
+<span class="hljs-keyword">const</span> port = process.<span class="hljs-property">env</span>.<span class="hljs-property">PORT</span> || <span class="hljs-number">5000</span>
+app.<span class="hljs-title function_">listen</span>(port, <span class="hljs-string">'0.0.0.0'</span>, <span class="hljs-function">() =&gt;</span> {
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`Server running on port <span class="hljs-subst">${port}</span>`</span>)
+})</code></pre><h3 id="renderyaml">render.yaml</h3>
+<pre tabindex="0"><code class="hljs language-yaml"><span class="hljs-comment"># render.yaml</span>
+<span class="hljs-attr">services:</span>
+  <span class="hljs-bullet">-</span> <span class="hljs-attr">type:</span> <span class="hljs-string">web</span>
+    <span class="hljs-attr">name:</span> <span class="hljs-string">artifacts-express-api</span>
+    <span class="hljs-attr">runtime:</span> <span class="hljs-string">node</span>
+    <span class="hljs-attr">repo:</span> <span class="hljs-string">https://github.com/your-org/artifacts-project</span>
+    <span class="hljs-attr">plan:</span> <span class="hljs-string">free</span>
+    <span class="hljs-attr">rootDir:</span> <span class="hljs-string">express-api</span>
+    <span class="hljs-attr">buildCommand:</span> <span class="hljs-string">|
+      npm install -g pnpm
+      pnpm install --frozen-lockfile
+      pnpm build
+</span>    <span class="hljs-attr">startCommand:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">start</span>
+    <span class="hljs-attr">envVars:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">DATABASE_URL</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>  <span class="hljs-comment"># ✅ Set in Render dashboard</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">JWT_SECRET</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">PAYLOAD_API_URL</span>
+        <span class="hljs-attr">value:</span> <span class="hljs-string">https://your-payload.vercel.app/api</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">SERVICE_TOKEN</span>
+        <span class="hljs-attr">sync:</span> <span class="hljs-literal">false</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">key:</span> <span class="hljs-string">PORT</span>
+        <span class="hljs-attr">value:</span> <span class="hljs-number">5000</span>
+    <span class="hljs-attr">healthCheckPath:</span> <span class="hljs-string">/health</span></code></pre><hr>
+<h2 id="appendix-c-key-decision-log">Appendix C: Key Decision Log</h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Aug 29, 2026</td>
+<td>Switch from VPS to serverless</td>
+<td>Faster setup, easier handover</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Payload on Vercel with standard PostgreSQL adapter</td>
+<td>Correct adapter for Neon</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Express on Render with explicit Neon URL</td>
+<td>Avoid Render Postgres expiration</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Cloudflare R2 (not Vercel Blob)</td>
+<td>R2 handles large 3D assets better</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Public website uses REST, not direct Payload import</td>
+<td>Preserves service boundary</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Analytics endpoints require service token (server-side only)</td>
+<td>Security</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Reports accessed via Express API, not direct DB</td>
+<td>Cross-project limitation</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td><code>is_correct</code> hidden via Payload access control</td>
+<td>Assessment security</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>GitHub Actions for testing only</td>
+<td>Platform auto-deploy is simpler</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Separate Neon projects for CMS and App</td>
+<td>Clear ownership</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Enable <code>versions: { drafts: true }</code></td>
+<td>Payload _status support</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Service token never sent from browser</td>
+<td>Prevent token exposure</td>
+</tr>
+</tbody></table>
+<hr>
+<p><strong>Document Version:</strong> 4.2 (Serverless Edition - Final)<br><strong>Status:</strong> ✅ Approved for Implementation<br><strong>Last Updated:</strong> August 29, 2026<br><strong>Next Step:</strong> Begin Phase 1 implementation</p>

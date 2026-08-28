@@ -1,0 +1,2343 @@
+<h1 id="artifacts--final-technical-architecture-and-implementation-plan">ARtifacts — Final Technical Architecture and Implementation Plan</h1>
+<hr>
+<h2 id="document-information">Document Information</h2>
+<table>
+<thead>
+<tr>
+<th>Property</th>
+<th>Value</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Document Version</strong></td>
+<td>3.0 (Final)</td>
+</tr>
+<tr>
+<td><strong>Status</strong></td>
+<td>✅ Approved Target Architecture</td>
+</tr>
+<tr>
+<td><strong>Last Updated</strong></td>
+<td>August 29, 2026</td>
+</tr>
+<tr>
+<td><strong>Target Audience</strong></td>
+<td>Development Team, Museum Staff, Capstone Panel</td>
+</tr>
+<tr>
+<td><strong>Related Documents</strong></td>
+<td>API Specification, CMS User Manual, Deployment Guide, Handover Guide</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="executive-summary">Executive Summary</h2>
+<h3 id="architecture-overview">Architecture Overview</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">                        ARtifacts Platform
+                                │
+          ┌─────────────────────┼─────────────────────┐
+          │                     │                     │
+          ▼                     ▼                     ▼
+ ┌─────────────────┐   ┌─────────────────┐   ┌─────────────────┐
+ │  Mobile AR App  │   │   Payload CMS    │   │ Public Website  │
+ │                 │   │                 │   │                 │
+ │ Unity           │   │ Admin Panel     │   │ Next.js         │
+ │ C#              │   │ Content         │   │ TypeScript      │
+ │ AR Foundation   │   │ Workflow        │   │                 │
+ │ ARCore          │   │ RBAC            │   │ Showcase        │
+ │ Android         │   │ Analytics UI    │   │ Download portal │
+ └────────┬────────┘   └────────┬────────┘   └────────┬────────┘
+          │                     │                     │
+          │                     │                     │
+          ▼                     ▼                     ▼
+                   ┌─────────────────────────┐
+                   │      Application APIs   │
+                   │                         │
+                   │ Payload API             │
+                   │ Express API             │
+                   └────────────┬────────────┘
+                                │
+                         ┌──────▼──────┐
+                         │ PostgreSQL  │
+                         │             │
+                         │ CMS data    │
+                         │ Game data   │
+                         │ Analytics   │
+                         └─────────────┘
+
+                         Large media
+                              │
+                              ▼
+                        Cloudflare R2
+                              │
+                              ▼
+                            CDN</code></pre><h3 id="core-principle">Core Principle</h3>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Ownership</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Museum Content</strong></td>
+<td>Payload CMS</td>
+<td>What the museum says</td>
+</tr>
+<tr>
+<td><strong>Game/User Data</strong></td>
+<td>Express API</td>
+<td>What the visitor does</td>
+</tr>
+<tr>
+<td><strong>AR Experience</strong></td>
+<td>Unity</td>
+<td>How the visitor experiences it</td>
+</tr>
+<tr>
+<td><strong>Public Presentation</strong></td>
+<td>Next.js</td>
+<td>How the public learns about it</td>
+</tr>
+<tr>
+<td><strong>Persistent Data</strong></td>
+<td>PostgreSQL</td>
+<td>Single source of truth</td>
+</tr>
+<tr>
+<td><strong>Media Storage</strong></td>
+<td>Cloudflare R2</td>
+<td>Large binary assets</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="1-project-context-and-goals">1. Project Context and Goals</h2>
+<h3 id="11-project-overview">1.1 Project Overview</h3>
+<p>ARtifacts is a cultural heritage platform developed in collaboration with the Pasig City Museum, housed within the historic Concepcion Mansion (built 1937, declared an Important Cultural Property in 2018). The platform consists of three interfaces:</p>
+<ol>
+<li><strong>Mobile AR Application</strong> (Unity + ARCore for Android)</li>
+<li><strong>Content Management System</strong> (Payload CMS)</li>
+<li><strong>Public Showcase Website</strong> (Next.js)</li>
+</ol>
+<h3 id="12-project-needs">1.2 Project Needs</h3>
+<ul>
+<li>Build the system before the deadline</li>
+<li>Demonstrate that it works</li>
+<li>Test it with real museum users</li>
+<li>Train museum staff</li>
+<li>Document everything</li>
+<li>Hand over the system successfully</li>
+<li>Make it possible for another developer to maintain later</li>
+</ul>
+<h3 id="13-priority-order">1.3 Priority Order</h3>
+<table>
+<thead>
+<tr>
+<th>Priority</th>
+<th>Focus</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>1. Development Speed</strong></td>
+<td>Don't build what Payload already provides</td>
+<td>You have a deadline</td>
+</tr>
+<tr>
+<td><strong>2. Reliability</strong></td>
+<td>Prefer mature, boring technologies</td>
+<td>Simplicity prevents failure</td>
+</tr>
+<tr>
+<td><strong>3. Accessibility</strong></td>
+<td>Open-source with usable free tiers</td>
+<td>Cost-effective for museum</td>
+</tr>
+<tr>
+<td><strong>4. Maintainability</strong></td>
+<td>Future developers should understand the system</td>
+<td>Handover matters</td>
+</tr>
+<tr>
+<td><strong>5. Portability</strong></td>
+<td>Museum should not be trapped in one provider</td>
+<td>Institutional freedom</td>
+</tr>
+<tr>
+<td><strong>6. Cost</strong></td>
+<td>Little or no recurring infrastructure cost</td>
+<td>Museum budget constraints</td>
+</tr>
+<tr>
+<td><strong>7. Scalability</strong></td>
+<td>Design reasonably well, but don't over-solve</td>
+<td>Focus on what matters now</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="2-interface-1--mobile-ar-application">2. Interface 1 — Mobile AR Application</h2>
+<h3 id="21-technology-stack">2.1 Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Mobile engine</td>
+<td>Unity LTS</td>
+<td>Main Android application and 3D rendering</td>
+</tr>
+<tr>
+<td>AR framework</td>
+<td>AR Foundation</td>
+<td>Cross-platform AR abstraction</td>
+</tr>
+<tr>
+<td>Android AR provider</td>
+<td>Google ARCore</td>
+<td>Plane detection, tracking, depth, light estimation</td>
+</tr>
+<tr>
+<td>Programming language</td>
+<td>C#</td>
+<td>Unity scripts and application logic</td>
+</tr>
+<tr>
+<td>Build tools</td>
+<td>Android Studio</td>
+<td>Android SDK, emulator, APK/AAB builds</td>
+</tr>
+<tr>
+<td>Java runtime</td>
+<td>Java JDK</td>
+<td>Supported by selected Unity version</td>
+</tr>
+<tr>
+<td>UI</td>
+<td>Unity UI Toolkit or Canvas UI</td>
+<td>Screens, menus, profiles, achievements</td>
+</tr>
+<tr>
+<td>3D model format</td>
+<td>GLB/glTF</td>
+<td>Efficient delivery of optimized 3D artifacts</td>
+</tr>
+<tr>
+<td>3D modeling</td>
+<td>Blender</td>
+<td>Cleaning, retopology, UVs, materials, optimization</td>
+</tr>
+<tr>
+<td>Photogrammetry</td>
+<td>3DF Zephyr</td>
+<td>Creating models from artifact photographs</td>
+</tr>
+<tr>
+<td>Audio editing</td>
+<td>Audacity</td>
+<td>Recording and cleaning narration</td>
+</tr>
+<tr>
+<td>Local caching</td>
+<td>Unity Addressables</td>
+<td>Avoiding repeated downloads</td>
+</tr>
+<tr>
+<td>HTTP communication</td>
+<td>UnityWebRequest</td>
+<td>Calling the Express API</td>
+</tr>
+<tr>
+<td>Local persistence</td>
+<td>Unity PlayerPrefs + SQLite</td>
+<td>Tokens, cache metadata, offline queue</td>
+</tr>
+</tbody></table>
+<h3 id="22-mobile-application-responsibilities">2.2 Mobile Application Responsibilities</h3>
+<p>The mobile app handles:</p>
+<ul>
+<li>AR functionality (plane detection, tracking, rendering)</li>
+<li>Artifact recognition and interaction</li>
+<li>3D model rendering with rotation/scale</li>
+<li>Audio narration playback</li>
+<li>Puzzle gameplay with timer and fragments</li>
+<li>Difficulty management (Easy/Medium/Hard)</li>
+<li>Pearl rewards and achievements display</li>
+<li>Assessments (pre and post)</li>
+<li>Visitor progress tracking</li>
+<li>Local caching of assets</li>
+<li>User authentication and session management</li>
+</ul>
+<h3 id="23-critical-design-rule">2.3 Critical Design Rule</h3>
+<p><strong>The mobile application must NOT contain authoritative museum content.</strong></p>
+<pre tabindex="0"><code class="hljs language-plaintext">Unity → Express API → Payload API → Artifact content</code></pre><p><strong>Never hard-code in Unity:</strong></p>
+<ul>
+<li>Artifact name, description, or historical period</li>
+<li>Audio URLs or 3D model URLs</li>
+<li>Puzzle difficulty parameters</li>
+<li>Assessment questions or answers</li>
+</ul>
+<p>This allows museum staff to update content without rebuilding the application.</p>
+<h3 id="24-mobile-application-modules">2.4 Mobile Application Modules</h3>
+<table>
+<thead>
+<tr>
+<th>Module</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Authentication/session manager</td>
+<td>Login, token storage, session validation</td>
+</tr>
+<tr>
+<td>Artifact catalog</td>
+<td>Browse and search artifacts</td>
+</tr>
+<tr>
+<td>Exhibit browser</td>
+<td>View exhibits and their artifacts</td>
+</tr>
+<tr>
+<td>Artifact information page</td>
+<td>Details, 3D model, audio</td>
+</tr>
+<tr>
+<td>3D model viewer</td>
+<td>Rotate, scale, inspect</td>
+</tr>
+<tr>
+<td>Markerless AR viewer</td>
+<td>Place artifacts in real world</td>
+</tr>
+<tr>
+<td>AR gesture controller</td>
+<td>Rotate, reposition in AR</td>
+</tr>
+<tr>
+<td>Audio narration player</td>
+<td>Play artifact narratives</td>
+</tr>
+<tr>
+<td>Reconstruction mini-game</td>
+<td>Fragment assembly puzzle</td>
+</tr>
+<tr>
+<td>Pearl and achievement display</td>
+<td>Track rewards</td>
+</tr>
+<tr>
+<td>User profile</td>
+<td>View progress and stats</td>
+</tr>
+<tr>
+<td>Settings</td>
+<td>Audio, graphics, AR controls</td>
+</tr>
+<tr>
+<td>Help and app guide</td>
+<td>Tutorial and FAQ</td>
+</tr>
+<tr>
+<td>API client</td>
+<td>Communication with Express</td>
+</tr>
+<tr>
+<td>Asset download/cache manager</td>
+<td>Download and store 3D models</td>
+</tr>
+<tr>
+<td>Error and connectivity manager</td>
+<td>Handle network issues</td>
+</tr>
+</tbody></table>
+<h3 id="25-service-layer-architecture">2.5 Service Layer Architecture</h3>
+<p>For maintainability, separate HTTP requests from UI:</p>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// Services to implement in Unity</span>
+<span class="hljs-title class_">ArtifactService</span>      <span class="hljs-comment">// Fetch artifact data</span>
+<span class="hljs-title class_">ExhibitService</span>       <span class="hljs-comment">// Fetch exhibit data</span>
+<span class="hljs-title class_">ProgressService</span>      <span class="hljs-comment">// Track user progress</span>
+<span class="hljs-title class_">AuthenticationService</span> <span class="hljs-comment">// Login, logout, session</span>
+<span class="hljs-title class_">MediaService</span>         <span class="hljs-comment">// Download 3D models, audio</span>
+<span class="hljs-title class_">AchievementService</span>   <span class="hljs-comment">// Unlock and track achievements</span></code></pre><hr>
+<h2 id="3-interface-2--museum-cms-payload">3. Interface 2 — Museum CMS (Payload)</h2>
+<h3 id="31-technology-stack">3.1 Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>CMS</td>
+<td>Payload CMS</td>
+<td>Content and administration</td>
+</tr>
+<tr>
+<td>CMS runtime</td>
+<td>Node.js 20+</td>
+<td>Runs Payload</td>
+</tr>
+<tr>
+<td>CMS framework</td>
+<td>Next.js</td>
+<td>Payload's web framework</td>
+</tr>
+<tr>
+<td>Programming language</td>
+<td>TypeScript</td>
+<td>Type-safe development</td>
+</tr>
+<tr>
+<td>CMS database</td>
+<td>PostgreSQL 16+</td>
+<td>Stores structured CMS content</td>
+</tr>
+<tr>
+<td>Database adapter</td>
+<td>Payload PostgreSQL Adapter</td>
+<td>PostgreSQL integration</td>
+</tr>
+<tr>
+<td>Object storage</td>
+<td>Cloudflare R2</td>
+<td>Models, images, and audio</td>
+</tr>
+<tr>
+<td>CMS deployment</td>
+<td>Docker</td>
+<td>Reproducible deployment</td>
+</tr>
+<tr>
+<td>Admin URL</td>
+<td><a href="https://cms.artifacts.ph/admin">https://cms.artifacts.ph/admin</a></td>
+<td>Museum staff access</td>
+</tr>
+</tbody></table>
+<h3 id="32-cms-responsibilities">3.2 CMS Responsibilities</h3>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Items</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Content</strong></td>
+<td>Artifacts, Exhibits, Achievements, Media</td>
+</tr>
+<tr>
+<td><strong>Administration</strong></td>
+<td>Staff accounts, Roles, Workflow, Reports</td>
+</tr>
+<tr>
+<td><strong>Analytics</strong></td>
+<td>Overview, Users, Exhibits, Artifacts, Educational impact</td>
+</tr>
+</tbody></table>
+<h3 id="33-why-payload-cms">3.3 Why Payload CMS</h3>
+<p>Payload is a particularly good fit because:</p>
+<ul>
+<li>PostgreSQL adapter uses Drizzle with migration support</li>
+<li>Access-control system supports operation-level permissions</li>
+<li>Role-based rules for staff management</li>
+<li>MIT licensed and fully open-source</li>
+<li>Versioning system retains document history and shows diffs</li>
+<li>Restore previous versions (useful for museum content)</li>
+</ul>
+<hr>
+<h2 id="4-interface-3--public-showcase-website">4. Interface 3 — Public Showcase Website</h2>
+<h3 id="41-technology-stack">4.1 Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Web framework</td>
+<td>Next.js</td>
+<td>Full-stack React framework</td>
+</tr>
+<tr>
+<td>Programming language</td>
+<td>TypeScript</td>
+<td>Type-safe development</td>
+</tr>
+<tr>
+<td>CMS integration</td>
+<td>Payload REST API</td>
+<td>Consumes CMS content</td>
+</tr>
+<tr>
+<td>Styling</td>
+<td>Tailwind CSS</td>
+<td>Responsive design</td>
+</tr>
+<tr>
+<td>Hosting</td>
+<td>Vercel or Cloudflare Pages</td>
+<td>Free tier deployment</td>
+</tr>
+</tbody></table>
+<h3 id="42-website-content">4.2 Website Content</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Public Website → Payload API → PostgreSQL</code></pre><p><strong>Pages:</strong></p>
+<ul>
+<li>Home</li>
+<li>About ARtifacts</li>
+<li>About Pasig City Museum</li>
+<li>Exhibits (list with thumbnails)</li>
+<li>Artifacts (list with search/filter)</li>
+<li>Artifact details (3D model viewer, description, audio)</li>
+<li>Download application</li>
+<li>Contact</li>
+</ul>
+<h3 id="43-key-benefit">4.3 Key Benefit</h3>
+<p>Museum staff update artifact information once in Payload, and it's immediately available to both the website and mobile application without any code changes.</p>
+<hr>
+<h2 id="5-content-models">5. Content Models</h2>
+<h3 id="51-artifacts-collection">5.1 Artifacts Collection</h3>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-title class_">Artifacts</span>
+├── <span class="hljs-attr">name</span>: <span class="hljs-title function_">string</span> (required)
+├── <span class="hljs-attr">slug</span>: <span class="hljs-title function_">string</span> (auto-generated <span class="hljs-keyword">from</span> name)
+├── <span class="hljs-attr">short_description</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">full_description</span>: rich text
+├── <span class="hljs-attr">historical_period</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">date_or_time_period</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">origin</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">cultural_significance</span>: rich text
+├── <span class="hljs-attr">thumbnail</span>: <span class="hljs-title class_">Media</span> (image)
+├── <span class="hljs-attr">model_file</span>: <span class="hljs-title class_">Media</span> (<span class="hljs-variable constant_">GLB</span>/glTF)
+├── <span class="hljs-attr">audio_narration</span>: <span class="hljs-title class_">Media</span> (<span class="hljs-title class_">MP3</span>/<span class="hljs-variable constant_">AAC</span>)
+├── <span class="hljs-attr">_status</span>: <span class="hljs-string">'draft'</span> | <span class="hljs-string">'published'</span> (<span class="hljs-title class_">Payload</span> native)
+├── <span class="hljs-attr">workflowStatus</span>: <span class="hljs-string">'draft'</span> | <span class="hljs-string">'submitted'</span> | <span class="hljs-string">'approved'</span> | <span class="hljs-string">'rejected'</span> | <span class="hljs-string">'archived'</span>
+├── <span class="hljs-attr">published_at</span>: datetime
+├── <span class="hljs-attr">assessment_question</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">assessment_options</span>: array <span class="hljs-keyword">of</span> { <span class="hljs-attr">text</span>: <span class="hljs-built_in">string</span>; <span class="hljs-attr">is_correct</span>: <span class="hljs-built_in">boolean</span> }
+├── <span class="hljs-attr">difficulty_config</span>: {
+│   <span class="hljs-attr">easy</span>: { <span class="hljs-attr">fragmentCount</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">timeLimit</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">pearlReward</span>: <span class="hljs-built_in">number</span> }
+│   <span class="hljs-attr">medium</span>: { <span class="hljs-attr">fragmentCount</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">timeLimit</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">pearlReward</span>: <span class="hljs-built_in">number</span> }
+│   <span class="hljs-attr">hard</span>: { <span class="hljs-attr">fragmentCount</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">timeLimit</span>: <span class="hljs-built_in">number</span>; <span class="hljs-attr">pearlReward</span>: <span class="hljs-built_in">number</span> }
+│ }
+└── <span class="hljs-attr">model_metadata</span>: {
+    <span class="hljs-attr">fileSize</span>: <span class="hljs-built_in">number</span>
+    <span class="hljs-attr">polygonCount</span>: <span class="hljs-built_in">number</span>
+    <span class="hljs-attr">textureResolution</span>: <span class="hljs-built_in">string</span>
+    <span class="hljs-attr">mobileOptimized</span>: <span class="hljs-built_in">boolean</span>
+    <span class="hljs-attr">scale</span>: <span class="hljs-built_in">number</span>
+    <span class="hljs-attr">version</span>: <span class="hljs-built_in">number</span>
+}</code></pre><h3 id="52-critical-design-note">5.2 Critical Design Note</h3>
+<p>Use Payload's native <code>_status</code> field for draft/published control, plus a separate <code>workflowStatus</code> field for the editorial process:</p>
+<pre tabindex="0"><code class="hljs language-plaintext">Payload _status: draft / published
+workflowStatus: draft → submitted → approved → rejected → archived</code></pre><p><strong>Do not</strong> replace Payload's native publishing system with a custom status field.</p>
+<h3 id="53-exhibits-collection">5.3 Exhibits Collection</h3>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-title class_">Exhibits</span>
+├── <span class="hljs-attr">name</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">slug</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">description</span>: rich text
+├── <span class="hljs-attr">thumbnail</span>: <span class="hljs-title class_">Media</span> (image)
+├── <span class="hljs-attr">historical_period</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">artifacts</span>: <span class="hljs-title class_">Relationship</span> (many-to-many <span class="hljs-keyword">with</span> <span class="hljs-title class_">Artifacts</span>)
+├── <span class="hljs-attr">_status</span>: <span class="hljs-string">'draft'</span> | <span class="hljs-string">'published'</span> (<span class="hljs-title class_">Payload</span> native)
+├── <span class="hljs-attr">workflowStatus</span>: <span class="hljs-string">'draft'</span> | <span class="hljs-string">'submitted'</span> | <span class="hljs-string">'approved'</span> | <span class="hljs-string">'rejected'</span> | <span class="hljs-string">'published'</span> | <span class="hljs-string">'archived'</span>
+└── <span class="hljs-attr">sort_order</span>: <span class="hljs-built_in">number</span></code></pre><h3 id="54-achievements-collection">5.4 Achievements Collection</h3>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-title class_">Achievements</span>
+├── <span class="hljs-attr">name</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">description</span>: <span class="hljs-built_in">string</span>
+├── <span class="hljs-attr">icon</span>: <span class="hljs-title class_">Media</span> (image)
+├── <span class="hljs-attr">requirementType</span>: <span class="hljs-string">'pearls_collected'</span> | <span class="hljs-string">'exhibits_completed'</span> | <span class="hljs-string">'perfect_score'</span> | <span class="hljs-string">'puzzles_completed'</span>
+└── <span class="hljs-attr">requirementValue</span>: <span class="hljs-built_in">number</span></code></pre><h3 id="55-report-ownership-resolution">5.5 Report Ownership Resolution</h3>
+<p><strong>Final Decision:</strong> Reports are owned by Express.</p>
+<pre tabindex="0"><code class="hljs language-plaintext">Mobile App → Express (creates report) → PostgreSQL (stores report)
+Payload → Read-only view of reports (via API integration or direct query)</code></pre><p><strong>Rationale:</strong> Reports are user-generated application activity, which belongs in Express. Payload may display reports to museum staff through an integration, but Express maintains the authoritative data.</p>
+<hr>
+<h2 id="6-express-backend">6. Express Backend</h2>
+<h3 id="61-technology-stack">6.1 Technology Stack</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Technology</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Runtime</td>
+<td>Node.js 20+</td>
+<td>Server-side JavaScript runtime</td>
+</tr>
+<tr>
+<td>Framework</td>
+<td>Express.js</td>
+<td>Application API</td>
+</tr>
+<tr>
+<td>Language</td>
+<td>TypeScript</td>
+<td>Type-safe development</td>
+</tr>
+<tr>
+<td>API format</td>
+<td>REST/JSON</td>
+<td>Simple Unity integration</td>
+</tr>
+<tr>
+<td>Authentication</td>
+<td>JWT</td>
+<td>User session management</td>
+</tr>
+<tr>
+<td>Validation</td>
+<td>Zod</td>
+<td>Validate request bodies and parameters</td>
+</tr>
+<tr>
+<td>Password hashing</td>
+<td>Argon2id or bcrypt</td>
+<td>Secure password storage</td>
+</tr>
+<tr>
+<td>Database access</td>
+<td>Drizzle ORM</td>
+<td>PostgreSQL communication</td>
+</tr>
+<tr>
+<td>API documentation</td>
+<td>OpenAPI/Swagger</td>
+<td>Document endpoints</td>
+</tr>
+<tr>
+<td>Rate limiting</td>
+<td>express-rate-limit</td>
+<td>Protect public APIs</td>
+</tr>
+<tr>
+<td>Security middleware</td>
+<td>Helmet, CORS</td>
+<td>HTTP security</td>
+</tr>
+<tr>
+<td>Logging</td>
+<td>Pino</td>
+<td>Structured server logs</td>
+</tr>
+<tr>
+<td>Testing</td>
+<td>Jest + Supertest</td>
+<td>Unit and API tests</td>
+</tr>
+</tbody></table>
+<h3 id="62-express-responsibilities">6.2 Express Responsibilities</h3>
+<p>Express owns application behavior that should <strong>not</strong> be editable by museum staff:</p>
+<table>
+<thead>
+<tr>
+<th>Category</th>
+<th>Items</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Users</strong></td>
+<td>Registration, login, profiles, password reset</td>
+</tr>
+<tr>
+<td><strong>Authentication</strong></td>
+<td>Token/session validation, refresh, logout</td>
+</tr>
+<tr>
+<td><strong>Game Sessions</strong></td>
+<td>Start, track, complete sessions</td>
+</tr>
+<tr>
+<td><strong>Gameplay Events</strong></td>
+<td>Progress tracking, event logging</td>
+</tr>
+<tr>
+<td><strong>Puzzle Results</strong></td>
+<td>Validation, rewards, personal bests</td>
+</tr>
+<tr>
+<td><strong>Progress</strong></td>
+<td>Per-user progress tracking</td>
+</tr>
+<tr>
+<td><strong>Assessments</strong></td>
+<td>Pre/post assessment attempts and scoring</td>
+</tr>
+<tr>
+<td><strong>Pearls</strong></td>
+<td>Award, track, prevent duplicate rewards</td>
+</tr>
+<tr>
+<td><strong>Achievements</strong></td>
+<td>Unlock, track, prevent duplicates</td>
+</tr>
+<tr>
+<td><strong>Reports</strong></td>
+<td>User feedback and bug reports</td>
+</tr>
+<tr>
+<td><strong>Analytics</strong></td>
+<td>Aggregation and reporting</td>
+</tr>
+</tbody></table>
+<h3 id="63-conceptual-division">6.3 Conceptual Division</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Payload = What the museum says
+Express = What the visitor does</code></pre><h3 id="64-api-endpoints">6.4 API Endpoints</h3>
+<h4 id="payload-api-read-only-published-content">Payload API (Read-only published content)</h4>
+<pre tabindex="0"><code class="hljs language-plaintext">GET    /api/artifacts                 # List published artifacts
+GET    /api/artifacts/:slug           # Single artifact (slug-based query)
+GET    /api/exhibits                  # List published exhibits
+GET    /api/exhibits/:slug            # Single exhibit with artifacts
+GET    /api/achievements              # List all achievements</code></pre><p><strong>Important:</strong> Slug-based routes may require custom handling:</p>
+<pre tabindex="0"><code class="hljs language-javascript"><span class="hljs-comment">// Example: Query by slug instead of ID</span>
+<span class="hljs-variable constant_">GET</span> /api/artifacts?where[slug][equals]=concepcion-mansion</code></pre><p>Document the exact approach used for Unity and website integration.</p>
+<h4 id="express-api-authenticated--admin">Express API (Authenticated + Admin)</h4>
+<pre tabindex="0"><code class="hljs language-plaintext"># Authentication
+POST   /api/auth/register              # User registration
+POST   /api/auth/login                 # User login
+POST   /api/auth/logout                # User logout
+POST   /api/auth/refresh               # Refresh token
+POST   /api/auth/password-reset        # Request password reset
+
+# User Profile
+GET    /api/users/me                   # Get current user
+PUT    /api/users/me                   # Update user profile
+GET    /api/users/me/progress          # User progress summary
+
+# Game Sessions
+POST   /api/game/sessions              # Start new session
+PUT    /api/game/sessions/:id          # Update session
+GET    /api/game/sessions/:id          # Get session details
+POST   /api/game/sessions/:id/events   # Log game event
+
+# Puzzles
+POST   /api/puzzles/:id/complete       # Submit puzzle completion
+GET    /api/puzzles/:id/best-times     # Get personal bests
+
+# Assessments
+POST   /api/assessments                # Submit assessment results
+GET    /api/assessments/:exhibitId     # Get user's assessment history
+
+# Reports
+POST   /api/reports                    # Submit user feedback
+
+# Analytics (Admin Only)
+GET    /api/analytics/overview         # Dashboard metrics
+GET    /api/analytics/users            # User analytics list
+GET    /api/analytics/users/:id        # Single user analytics
+GET    /api/analytics/exhibits         # Exhibit analytics
+GET    /api/analytics/artifacts        # Artifact analytics</code></pre><h3 id="65-api-security">6.5 API Security</h3>
+<p><strong>Critical Rule:</strong> Don't put secret API keys inside the Unity APK.</p>
+<table>
+<thead>
+<tr>
+<th>Type</th>
+<th>Access</th>
+<th>Endpoints</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Public</strong></td>
+<td>No authentication</td>
+<td>Published artifacts, exhibits, achievements</td>
+</tr>
+<tr>
+<td><strong>Authenticated</strong></td>
+<td>Valid JWT required</td>
+<td>User profile, game sessions, puzzles, assessments</td>
+</tr>
+<tr>
+<td><strong>Admin-Only</strong></td>
+<td>Express admin role</td>
+<td>Analytics endpoints</td>
+</tr>
+</tbody></table>
+<p>For public museum content, use Payload's published-only access rules. Keep authentication, gameplay changes, rewards, and user data behind the Express API.</p>
+<hr>
+<h2 id="7-database-architecture">7. Database Architecture</h2>
+<h3 id="71-database-ownership-separation">7.1 Database Ownership Separation</h3>
+<p><strong>Final Decision:</strong> Use separate PostgreSQL schemas with distinct database users.</p>
+<pre tabindex="0"><code class="hljs language-plaintext">PostgreSQL
+    │
+    ├── Schema: museum_content (owned by payload_user)
+    │   ├── artifacts
+    │   ├── exhibits
+    │   ├── media
+    │   └── achievements
+    │
+    └── Schema: application_data (owned by express_user)
+        ├── users
+        ├── sessions
+        ├── game_sessions
+        ├── puzzle_attempts
+        ├── pearl_transactions
+        ├── user_progress
+        ├── assessment_attempts
+        ├── events
+        ├── achievements_earned
+        ├── personal_bests
+        └── reports</code></pre><h3 id="72-implementation">7.2 Implementation</h3>
+<pre tabindex="0"><code class="hljs language-sql"><span class="hljs-comment">-- Create schemas and users</span>
+<span class="hljs-keyword">CREATE</span> SCHEMA museum_content;
+<span class="hljs-keyword">CREATE</span> SCHEMA application_data;
+
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">USER</span> payload_user <span class="hljs-keyword">WITH</span> PASSWORD <span class="hljs-string">'secure_password'</span>;
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">USER</span> express_user <span class="hljs-keyword">WITH</span> PASSWORD <span class="hljs-string">'secure_password'</span>;
+
+<span class="hljs-comment">-- Grant permissions</span>
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">ALL</span> <span class="hljs-keyword">ON</span> SCHEMA museum_content <span class="hljs-keyword">TO</span> payload_user;
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">ALL</span> <span class="hljs-keyword">ON</span> SCHEMA application_data <span class="hljs-keyword">TO</span> express_user;
+
+<span class="hljs-comment">-- Payload can only read from application_data (for analytics display)</span>
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">ON</span> <span class="hljs-keyword">ALL</span> TABLES <span class="hljs-keyword">IN</span> SCHEMA application_data <span class="hljs-keyword">TO</span> payload_user;
+
+<span class="hljs-comment">-- Express can only read from museum_content (for published content)</span>
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">ON</span> museum_content.artifacts <span class="hljs-keyword">TO</span> express_user;
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">ON</span> museum_content.exhibits <span class="hljs-keyword">TO</span> express_user;
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">ON</span> museum_content.achievements <span class="hljs-keyword">TO</span> express_user;
+<span class="hljs-keyword">GRANT</span> <span class="hljs-keyword">SELECT</span> <span class="hljs-keyword">ON</span> museum_content.media <span class="hljs-keyword">TO</span> express_user;</code></pre><h3 id="73-critical-rule">7.3 Critical Rule</h3>
+<p><strong>Express should never directly modify Payload's internal tables.</strong> If Express needs artifact information, use the Payload API.</p>
+<p><strong>This makes future migration much easier.</strong></p>
+<h3 id="74-express-owned-tables">7.4 Express-Owned Tables</h3>
+<pre tabindex="0"><code class="hljs language-sql"><span class="hljs-comment">-- Users</span>
+users
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── email: <span class="hljs-type">VARCHAR</span> <span class="hljs-keyword">UNIQUE</span>
+├── password_hash: <span class="hljs-type">VARCHAR</span>
+├── created_at: <span class="hljs-type">TIMESTAMP</span>
+├── last_login_at: <span class="hljs-type">TIMESTAMP</span>
+├── is_active: <span class="hljs-type">BOOLEAN</span>
+└── profile_data: JSONB
+
+<span class="hljs-comment">-- Sessions</span>
+sessions
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── token_hash: <span class="hljs-type">VARCHAR</span>
+├── expires_at: <span class="hljs-type">TIMESTAMP</span>
+├── created_at: <span class="hljs-type">TIMESTAMP</span>
+└── revoked_at: <span class="hljs-type">TIMESTAMP</span>
+
+<span class="hljs-comment">-- Game Sessions</span>
+game_sessions
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── exhibit_id: UUID
+├── difficulty: <span class="hljs-type">VARCHAR</span>
+├── started_at: <span class="hljs-type">TIMESTAMP</span>
+├── completed_at: <span class="hljs-type">TIMESTAMP</span>
+├── duration_seconds: <span class="hljs-type">INTEGER</span>
+├── score: <span class="hljs-type">DECIMAL</span>
+└── status: <span class="hljs-type">VARCHAR</span>
+
+<span class="hljs-comment">-- Puzzle Attempts</span>
+puzzle_attempts
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── artifact_id: UUID
+├── difficulty: <span class="hljs-type">VARCHAR</span>
+├── started_at: <span class="hljs-type">TIMESTAMP</span>
+├── completed_at: <span class="hljs-type">TIMESTAMP</span>
+├── completion_time_ms: <span class="hljs-type">INTEGER</span>
+├── is_valid: <span class="hljs-type">BOOLEAN</span>
+└── created_at: <span class="hljs-type">TIMESTAMP</span>
+
+<span class="hljs-comment">-- Pearl Transactions</span>
+pearl_transactions
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── artifact_id: UUID
+├── difficulty: <span class="hljs-type">VARCHAR</span>
+├── amount: <span class="hljs-type">INTEGER</span>
+├── reason: <span class="hljs-type">VARCHAR</span>
+├── created_at: <span class="hljs-type">TIMESTAMP</span>
+└── unique_reward_key: <span class="hljs-type">VARCHAR</span> <span class="hljs-keyword">UNIQUE</span>
+
+<span class="hljs-comment">-- User Progress</span>
+user_progress
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── exhibit_id: UUID
+├── artifacts_discovered: <span class="hljs-type">INTEGER</span>
+├── completed: <span class="hljs-type">BOOLEAN</span>
+├── pearls_earned: <span class="hljs-type">INTEGER</span>
+├── best_time: <span class="hljs-type">INTEGER</span>
+└── last_played_at: <span class="hljs-type">TIMESTAMP</span>
+
+<span class="hljs-comment">-- Assessment Attempts</span>
+assessment_attempts
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── exhibit_id: UUID
+├── assessment_type: <span class="hljs-string">'pre'</span> <span class="hljs-operator">|</span> <span class="hljs-string">'post'</span>
+├── score: <span class="hljs-type">INTEGER</span>
+├── max_score: <span class="hljs-type">INTEGER</span>
+├── started_at: <span class="hljs-type">TIMESTAMP</span>
+└── completed_at: <span class="hljs-type">TIMESTAMP</span>
+
+<span class="hljs-comment">-- Events</span>
+events
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── session_id: UUID <span class="hljs-keyword">REFERENCES</span> game_sessions(id)
+├── event_type: <span class="hljs-type">VARCHAR</span>
+├── exhibit_id: UUID
+├── artifact_id: UUID
+├── <span class="hljs-type">timestamp</span>: <span class="hljs-type">TIMESTAMP</span>
+└── metadata: JSONB
+
+<span class="hljs-comment">-- Achievements Earned</span>
+achievements_earned
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── achievement_id: UUID
+├── unlocked_at: <span class="hljs-type">TIMESTAMP</span>
+├── earned_pearls: <span class="hljs-type">INTEGER</span>
+└── unique_key: <span class="hljs-type">VARCHAR</span> <span class="hljs-keyword">UNIQUE</span>
+
+<span class="hljs-comment">-- Personal Bests</span>
+personal_bests
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── artifact_id: UUID
+├── difficulty: <span class="hljs-type">VARCHAR</span>
+├── best_time_ms: <span class="hljs-type">INTEGER</span>
+└── achieved_at: <span class="hljs-type">TIMESTAMP</span>
+
+<span class="hljs-comment">-- Reports</span>
+reports
+├── id: UUID <span class="hljs-keyword">PRIMARY KEY</span>
+├── user_id: UUID <span class="hljs-keyword">REFERENCES</span> users(id)
+├── category: <span class="hljs-type">VARCHAR</span>
+├── description: TEXT
+├── device_info: JSONB
+├── status: <span class="hljs-type">VARCHAR</span>
+├── admin_notes: TEXT
+├── created_at: <span class="hljs-type">TIMESTAMP</span>
+└── resolved_at: <span class="hljs-type">TIMESTAMP</span></code></pre><h3 id="75-database-constraints">7.5 Database Constraints</h3>
+<p>Use database constraints for important rules:</p>
+<pre tabindex="0"><code class="hljs language-sql"><span class="hljs-comment">-- Prevent duplicate rewards</span>
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">UNIQUE</span> INDEX idx_unique_reward 
+<span class="hljs-keyword">ON</span> pearl_transactions (user_id, artifact_id, difficulty);
+
+<span class="hljs-comment">-- Ensure unique authentication tokens</span>
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">UNIQUE</span> INDEX idx_unique_session 
+<span class="hljs-keyword">ON</span> sessions (token_hash);
+
+<span class="hljs-comment">-- Prevent duplicate achievement unlocks</span>
+<span class="hljs-keyword">CREATE</span> <span class="hljs-keyword">UNIQUE</span> INDEX idx_unique_achievement 
+<span class="hljs-keyword">ON</span> achievements_earned (user_id, achievement_id);
+
+<span class="hljs-comment">-- Enforce valid status values</span>
+<span class="hljs-keyword">ALTER TABLE</span> game_sessions 
+<span class="hljs-keyword">ADD CONSTRAINT</span> valid_status 
+<span class="hljs-keyword">CHECK</span> (status <span class="hljs-keyword">IN</span> (<span class="hljs-string">'active'</span>, <span class="hljs-string">'paused'</span>, <span class="hljs-string">'completed'</span>, <span class="hljs-string">'abandoned'</span>));</code></pre><hr>
+<h2 id="8-analytics-architecture">8. Analytics Architecture</h2>
+<h3 id="81-core-insight">8.1 Core Insight</h3>
+<p>You don't need:</p>
+<ul>
+<li>A separate analytics SaaS</li>
+<li>A dedicated analytics database</li>
+<li>Google Analytics to answer your core questions</li>
+</ul>
+<h3 id="82-analytics-flow">8.2 Analytics Flow</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Unity → Express (gameplay events) → PostgreSQL → Express (queries) → Payload Dashboard</code></pre><h3 id="83-events-to-record">8.3 Events to Record</h3>
+<table>
+<thead>
+<tr>
+<th>Event Type</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><code>game_session_started</code></td>
+<td>User begins a session</td>
+</tr>
+<tr>
+<td><code>game_session_completed</code></td>
+<td>User completes a session</td>
+</tr>
+<tr>
+<td><code>exhibit_viewed</code></td>
+<td>User views an exhibit</td>
+</tr>
+<tr>
+<td><code>exhibit_started</code></td>
+<td>User starts an exhibit</td>
+</tr>
+<tr>
+<td><code>exhibit_completed</code></td>
+<td>User completes an exhibit</td>
+</tr>
+<tr>
+<td><code>artifact_viewed</code></td>
+<td>User views artifact details</td>
+</tr>
+<tr>
+<td><code>artifact_interacted</code></td>
+<td>User interacts with 3D model</td>
+</tr>
+<tr>
+<td><code>artifact_completed</code></td>
+<td>User completes artifact puzzle</td>
+</tr>
+<tr>
+<td><code>puzzle_started</code></td>
+<td>User starts a puzzle</td>
+</tr>
+<tr>
+<td><code>puzzle_completed</code></td>
+<td>User completes a puzzle</td>
+</tr>
+<tr>
+<td><code>assessment_started</code></td>
+<td>User starts an assessment</td>
+</tr>
+<tr>
+<td><code>assessment_completed</code></td>
+<td>User completes an assessment</td>
+</tr>
+<tr>
+<td><code>achievement_unlocked</code></td>
+<td>User earns an achievement</td>
+</tr>
+</tbody></table>
+<h3 id="84-analytics-mvp-dashboard">8.4 Analytics MVP Dashboard</h3>
+<p>Museum staff should see:</p>
+<pre tabindex="0"><code class="hljs language-plaintext">ARtifacts Dashboard
+──────────────────────────────────────────────
+
+📊 OVERVIEW
+  Total Users: 1,284
+  Active Users (last 7 days): 342
+  Game Sessions: 3,842
+  Completed Games: 2,781
+  Average Game Time: 08:42
+  Overall Completion Rate: 72.4%
+
+📈 EXHIBIT POPULARITY
+  1. Concepcion Mansion: 1,842 visits, 76.5% completion
+  2. Colonial Life: 1,234 visits, 68.2% completion
+  3. Local Artifacts: 982 visits, 81.3% completion
+
+🏆 ARTIFACT POPULARITY
+  1. Antique Cabinet: 742 views, 84% completion
+  2. Writing Desk: 581 views, 76% completion
+  3. Santo Niño: 492 views, 79% completion
+
+🎓 EDUCATIONAL IMPACT
+  Pre-assessment Average: 58%
+  Post-assessment Average: 81%
+  Average Learning Gain: +23%
+  Completion Rate: 65.2%</code></pre><hr>
+<h2 id="9-media-and-3d-asset-stack">9. Media and 3D Asset Stack</h2>
+<h3 id="91-storage-architecture">9.1 Storage Architecture</h3>
+<table>
+<thead>
+<tr>
+<th>Area</th>
+<th>Recommended Choice</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Object Storage</td>
+<td>Cloudflare R2 (free tier: 10 GB, 1M Class A ops)</td>
+</tr>
+<tr>
+<td>Delivery</td>
+<td>Cloudflare CDN</td>
+</tr>
+<tr>
+<td>3D format</td>
+<td>GLB/glTF</td>
+</tr>
+<tr>
+<td>Images</td>
+<td>WebP or optimized JPEG</td>
+</tr>
+<tr>
+<td>Audio</td>
+<td>MP3 or AAC</td>
+</tr>
+<tr>
+<td>Upload management</td>
+<td>Payload Media Library connected to R2</td>
+</tr>
+<tr>
+<td>Asset versioning</td>
+<td>Filename/version metadata + immutable object paths</td>
+</tr>
+</tbody></table>
+<h3 id="92-storage-structure">9.2 Storage Structure</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">models/
+  artifact-001/v1/artifact-001.glb
+  artifact-001/v2/artifact-001.glb
+
+images/
+  artifact-001/thumbnail.webp
+  artifact-001/preview.webp
+
+audio/
+  artifact-001/en/narration.mp3
+  artifact-001/tl/narration.mp3</code></pre><p><strong>Critical:</strong> Do not place large 3D assets inside PostgreSQL. PostgreSQL contains file references and metadata; object storage contains the actual binary files.</p>
+<h3 id="93-content-delivery-strategy">9.3 Content Delivery Strategy</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Unity → R2/CDN → Large 3D Assets → Local Cache (Unity Addressables)</code></pre><p><strong>Why this matters:</strong></p>
+<ul>
+<li>Museums may have weak Wi-Fi</li>
+<li>Inconsistent cellular signal</li>
+<li>Many visitors simultaneously using the app</li>
+</ul>
+<hr>
+<h2 id="10-deployment-and-hosting">10. Deployment and Hosting</h2>
+<h3 id="101-recommended-architecture">10.1 Recommended Architecture</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">┌─────────────────────────────────────────────────────────────┐
+│                  VPS / Docker Host                         │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────┐ │
+│  │   Caddy     │  │  Express    │  │     Payload        │ │
+│  │ (Reverse    │  │    API      │  │      CMS           │ │
+│  │   Proxy)    │  │             │  │                     │ │
+│  └─────────────┘  └─────────────┘  └─────────────────────┘ │
+│                                                             │
+│  ┌─────────────────────────────────────────────────────────┐ │
+│  │              PostgreSQL Database                       │ │
+│  │  Schema: museum_content (Payload)                     │ │
+│  │  Schema: application_data (Express)                   │ │
+│  └─────────────────────────────────────────────────────────┘ │
+└─────────────────────────────────────────────────────────────┘
+                        │
+            ┌───────────┴───────────┐
+            ▼                       ▼
+   ┌─────────────────┐     ┌─────────────────┐
+   │  Cloudflare R2  │     │   Cloudflare    │
+   │  (3D Models,    │     │     CDN         │
+   │   Images, Audio)│     │                 │
+   └─────────────────┘     └─────────────────┘
+
+   ┌─────────────────────────────────────────────────────────────┐
+   │  Public Website (Deployed Separately)                     │
+   │  Vercel or Cloudflare Pages (free tier)                   │
+   └─────────────────────────────────────────────────────────────┘</code></pre><h3 id="102-docker-compose-configuration">10.2 Docker Compose Configuration</h3>
+<pre tabindex="0"><code class="hljs language-yaml"><span class="hljs-comment"># docker-compose.yml</span>
+<span class="hljs-attr">version:</span> <span class="hljs-string">'3.8'</span>
+
+<span class="hljs-attr">services:</span>
+  <span class="hljs-attr">postgres:</span>
+    <span class="hljs-attr">image:</span> <span class="hljs-string">postgres:16-alpine</span>
+    <span class="hljs-attr">environment:</span>
+      <span class="hljs-attr">POSTGRES_DB:</span> <span class="hljs-string">artifacts</span>
+      <span class="hljs-attr">POSTGRES_USER:</span> <span class="hljs-string">artifacts</span>
+      <span class="hljs-attr">POSTGRES_PASSWORD:</span> <span class="hljs-string">${POSTGRES_PASSWORD}</span>
+    <span class="hljs-attr">volumes:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">postgres_data:/var/lib/postgresql/data</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">./database/init.sql:/docker-entrypoint-initdb.d/init.sql</span>
+    <span class="hljs-attr">networks:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">artifacts-network</span>
+    <span class="hljs-attr">healthcheck:</span>
+      <span class="hljs-attr">test:</span> [<span class="hljs-string">"CMD-SHELL"</span>, <span class="hljs-string">"pg_isready -U artifacts"</span>]
+      <span class="hljs-attr">interval:</span> <span class="hljs-string">10s</span>
+      <span class="hljs-attr">timeout:</span> <span class="hljs-string">5s</span>
+      <span class="hljs-attr">retries:</span> <span class="hljs-number">5</span>
+
+  <span class="hljs-attr">payload:</span>
+    <span class="hljs-attr">build:</span> <span class="hljs-string">./payload-cms</span>
+    <span class="hljs-attr">depends_on:</span>
+      <span class="hljs-attr">postgres:</span>
+        <span class="hljs-attr">condition:</span> <span class="hljs-string">service_healthy</span>
+    <span class="hljs-attr">environment:</span>
+      <span class="hljs-attr">DATABASE_URL:</span> <span class="hljs-string">postgresql://payload_user:${PAYLOAD_DB_PASSWORD}@postgres:5432/artifacts</span>
+      <span class="hljs-attr">PAYLOAD_SECRET:</span> <span class="hljs-string">${PAYLOAD_SECRET}</span>
+      <span class="hljs-attr">R2_ACCESS_KEY_ID:</span> <span class="hljs-string">${R2_ACCESS_KEY_ID}</span>
+      <span class="hljs-attr">R2_SECRET_ACCESS_KEY:</span> <span class="hljs-string">${R2_SECRET_ACCESS_KEY}</span>
+      <span class="hljs-attr">R2_BUCKET:</span> <span class="hljs-string">${R2_BUCKET}</span>
+      <span class="hljs-attr">R2_ENDPOINT:</span> <span class="hljs-string">${R2_ENDPOINT}</span>
+      <span class="hljs-attr">PUBLIC_URL:</span> <span class="hljs-string">https://cms.artifacts.ph</span>
+    <span class="hljs-attr">volumes:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">./payload-cms/uploads:/app/uploads</span>
+    <span class="hljs-attr">networks:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">artifacts-network</span>
+
+  <span class="hljs-attr">express:</span>
+    <span class="hljs-attr">build:</span> <span class="hljs-string">./express-api</span>
+    <span class="hljs-attr">depends_on:</span>
+      <span class="hljs-attr">postgres:</span>
+        <span class="hljs-attr">condition:</span> <span class="hljs-string">service_healthy</span>
+    <span class="hljs-attr">environment:</span>
+      <span class="hljs-attr">DATABASE_URL:</span> <span class="hljs-string">postgresql://express_user:${EXPRESS_DB_PASSWORD}@postgres:5432/artifacts</span>
+      <span class="hljs-attr">JWT_SECRET:</span> <span class="hljs-string">${JWT_SECRET}</span>
+      <span class="hljs-attr">PAYLOAD_API_URL:</span> <span class="hljs-string">http://payload:3000/api</span>
+    <span class="hljs-attr">networks:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">artifacts-network</span>
+
+  <span class="hljs-attr">caddy:</span>
+    <span class="hljs-attr">image:</span> <span class="hljs-string">caddy:2-alpine</span>
+    <span class="hljs-attr">ports:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">"80:80"</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">"443:443"</span>
+    <span class="hljs-attr">volumes:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">./Caddyfile:/etc/caddy/Caddyfile</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">caddy_data:/data</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">caddy_config:/config</span>
+    <span class="hljs-attr">networks:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">artifacts-network</span>
+    <span class="hljs-attr">depends_on:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">payload</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-string">express</span>
+
+<span class="hljs-attr">volumes:</span>
+  <span class="hljs-attr">postgres_data:</span>
+  <span class="hljs-attr">caddy_data:</span>
+  <span class="hljs-attr">caddy_config:</span>
+
+<span class="hljs-attr">networks:</span>
+  <span class="hljs-attr">artifacts-network:</span></code></pre><h3 id="103-caddy-configuration">10.3 Caddy Configuration</h3>
+<pre tabindex="0"><code class="hljs language-plaintext"># Caddyfile
+cms.artifacts.ph {
+    reverse_proxy payload:3000
+}
+
+api.artifacts.ph {
+    reverse_proxy express:5000
+}
+
+# Public website hosted separately on Vercel/Cloudflare Pages
+# artifacts.ph -&gt; Vercel deployment</code></pre><h3 id="104-environment-variables">10.4 Environment Variables</h3>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># .env.example</span>
+<span class="hljs-comment"># Database</span>
+POSTGRES_PASSWORD=secure_password_here
+PAYLOAD_DB_PASSWORD=payload_password_here
+EXPRESS_DB_PASSWORD=express_password_here
+
+<span class="hljs-comment"># Payload</span>
+PAYLOAD_SECRET=your_secure_secret_key_here
+PUBLIC_URL=https://cms.artifacts.ph
+
+<span class="hljs-comment"># R2 Storage</span>
+R2_ACCESS_KEY_ID=your_access_key
+R2_SECRET_ACCESS_KEY=your_secret_key
+R2_BUCKET=artifacts-media
+R2_ENDPOINT=https://your-account.r2.cloudflarestorage.com
+
+<span class="hljs-comment"># Express</span>
+JWT_SECRET=your_jwt_secret_here
+EXPRESS_PORT=5000
+PAYLOAD_API_URL=http://payload:3000/api</code></pre><p><strong>Never commit .env with real secrets.</strong></p>
+<h3 id="105-free-hosting-options">10.5 Free Hosting Options</h3>
+<table>
+<thead>
+<tr>
+<th>Option</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Oracle Cloud Free Tier</strong></td>
+<td>4 ARM cores, 24 GB RAM, 200 GB storage, forever free</td>
+</tr>
+<tr>
+<td><strong>RAW</strong></td>
+<td>2 vCPU, 4 GB RAM, 40 GB SSD, forever free, no credit card required</td>
+</tr>
+<tr>
+<td><strong>Vercel (Next.js)</strong></td>
+<td>Free for personal/hobby projects</td>
+</tr>
+<tr>
+<td><strong>Cloudflare Pages</strong></td>
+<td>Free for static sites</td>
+</tr>
+<tr>
+<td><strong>Neon (PostgreSQL)</strong></td>
+<td>1 GB storage, 1 GB RAM, forever free</td>
+</tr>
+<tr>
+<td><strong>Supabase (PostgreSQL)</strong></td>
+<td>500 MB database, forever free</td>
+</tr>
+<tr>
+<td><strong>Cloudflare R2</strong></td>
+<td>10 GB storage, 1M Class A ops, free egress</td>
+</tr>
+</tbody></table>
+<h3 id="106-portability-strategy">10.6 Portability Strategy</h3>
+<p>Design the application so it can be deployed in multiple environments:</p>
+<pre tabindex="0"><code class="hljs language-plaintext">Development: Docker Compose (local)
+Testing: Docker Compose (VPS)
+Production: Docker Compose (VPS) or Managed Services
+Handover: Provide both cloud and self-hosting instructions</code></pre><hr>
+<h2 id="11-github-actions-cicd">11. GitHub Actions CI/CD</h2>
+<h3 id="111-complete-ci-pipeline">11.1 Complete CI Pipeline</h3>
+<pre tabindex="0"><code class="hljs language-yaml"><span class="hljs-comment"># .github/workflows/ci.yml</span>
+<span class="hljs-attr">name:</span> <span class="hljs-string">CI</span>
+
+<span class="hljs-attr">on:</span>
+  <span class="hljs-attr">push:</span>
+    <span class="hljs-attr">branches:</span> [<span class="hljs-string">main</span>, <span class="hljs-string">staging</span>]
+  <span class="hljs-attr">pull_request:</span>
+    <span class="hljs-attr">branches:</span> [<span class="hljs-string">main</span>]
+
+<span class="hljs-attr">jobs:</span>
+  <span class="hljs-attr">test-payload:</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">defaults:</span>
+      <span class="hljs-attr">run:</span>
+        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">payload-cms</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Setup</span> <span class="hljs-string">Node.js</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/setup-node@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">node-version:</span> <span class="hljs-string">'20'</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">pnpm</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">pnpm/action-setup@v2</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">version:</span> <span class="hljs-number">8</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">dependencies</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">install</span> <span class="hljs-string">--frozen-lockfile</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Type</span> <span class="hljs-string">check</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">type-check</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Lint</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">lint</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Test</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">test</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Build</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">build</span>
+
+  <span class="hljs-attr">test-express:</span>
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">defaults:</span>
+      <span class="hljs-attr">run:</span>
+        <span class="hljs-attr">working-directory:</span> <span class="hljs-string">express-api</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Setup</span> <span class="hljs-string">Node.js</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/setup-node@v4</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">node-version:</span> <span class="hljs-string">'20'</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">pnpm</span>
+        <span class="hljs-attr">uses:</span> <span class="hljs-string">pnpm/action-setup@v2</span>
+        <span class="hljs-attr">with:</span>
+          <span class="hljs-attr">version:</span> <span class="hljs-number">8</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Install</span> <span class="hljs-string">dependencies</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">install</span> <span class="hljs-string">--frozen-lockfile</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Type</span> <span class="hljs-string">check</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">type-check</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Lint</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">lint</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Test</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">test</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Build</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">pnpm</span> <span class="hljs-string">build</span>
+
+  <span class="hljs-attr">deploy-staging:</span>
+    <span class="hljs-attr">needs:</span> [<span class="hljs-string">test-payload</span>, <span class="hljs-string">test-express</span>]
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">if:</span> <span class="hljs-string">github.ref</span> <span class="hljs-string">==</span> <span class="hljs-string">'refs/heads/staging'</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">staging</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">|
+          # SSH to staging server
+          # docker-compose pull
+          # docker-compose up -d
+          # This is a placeholder; actual implementation needed
+</span>
+  <span class="hljs-attr">deploy-production:</span>
+    <span class="hljs-attr">needs:</span> [<span class="hljs-string">test-payload</span>, <span class="hljs-string">test-express</span>]
+    <span class="hljs-attr">runs-on:</span> <span class="hljs-string">ubuntu-latest</span>
+    <span class="hljs-attr">if:</span> <span class="hljs-string">github.ref</span> <span class="hljs-string">==</span> <span class="hljs-string">'refs/heads/main'</span>
+    
+    <span class="hljs-attr">steps:</span>
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">uses:</span> <span class="hljs-string">actions/checkout@v4</span>
+      
+      <span class="hljs-bullet">-</span> <span class="hljs-attr">name:</span> <span class="hljs-string">Deploy</span> <span class="hljs-string">to</span> <span class="hljs-string">production</span>
+        <span class="hljs-attr">run:</span> <span class="hljs-string">|
+          # SSH to production server
+          # docker-compose pull
+          # docker-compose up -d
+          # Run database migrations
+          # This is a placeholder; actual implementation needed</span></code></pre><h3 id="112-required-scripts">11.2 Required Scripts</h3>
+<p>Each service must have these scripts in <code>package.json</code>:</p>
+<pre tabindex="0"><code class="hljs language-json"><span class="hljs-punctuation">{</span>
+  <span class="hljs-attr">"scripts"</span><span class="hljs-punctuation">:</span> <span class="hljs-punctuation">{</span>
+    <span class="hljs-attr">"type-check"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"tsc --noEmit"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"lint"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"eslint src/**/*.ts"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"test"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"jest"</span><span class="hljs-punctuation">,</span>
+    <span class="hljs-attr">"build"</span><span class="hljs-punctuation">:</span> <span class="hljs-string">"tsc"</span>
+  <span class="hljs-punctuation">}</span>
+<span class="hljs-punctuation">}</span></code></pre><hr>
+<h2 id="12-data-migration-strapi--payload">12. Data Migration: Strapi → Payload</h2>
+<h3 id="121-migration-strategy">12.1 Migration Strategy</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">Strapi Cloud → Export Data → Transform → Import → Verify → Production</code></pre><h3 id="122-migration-steps">12.2 Migration Steps</h3>
+<table>
+<thead>
+<tr>
+<th>Step</th>
+<th>Action</th>
+<th>Details</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>1</td>
+<td>Export Strapi data</td>
+<td>Use Strapi export plugin or manual export to JSON</td>
+</tr>
+<tr>
+<td>2</td>
+<td>Export media files</td>
+<td>Download all media from Strapi Media Library</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Transform to Payload format</td>
+<td>Custom Node.js script maps fields</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Upload media to R2</td>
+<td>Use R2 console or AWS CLI</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Register media in Payload</td>
+<td>Create Media records for each file</td>
+</tr>
+<tr>
+<td>6</td>
+<td>Import content to Payload</td>
+<td>Use Payload REST API or custom script</td>
+</tr>
+<tr>
+<td>7</td>
+<td>Verify relationships</td>
+<td>Check artifact-exhibit links</td>
+</tr>
+<tr>
+<td>8</td>
+<td>Test API endpoints</td>
+<td>Verify content accessible via API</td>
+</tr>
+<tr>
+<td>9</td>
+<td>Deploy to production</td>
+<td>Docker Compose with migrated data</td>
+</tr>
+</tbody></table>
+<h3 id="123-import-script-requirements">12.3 Import Script Requirements</h3>
+<p>The migration script must:</p>
+<ul>
+<li>Validate input data</li>
+<li>Upload or register Media records in Payload</li>
+<li>Preserve artifact-exhibit relationships</li>
+<li>Handle duplicate records safely</li>
+<li>Verify imported content</li>
+<li>Produce an import report</li>
+</ul>
+<h3 id="124-sample-migration-script">12.4 Sample Migration Script</h3>
+<pre tabindex="0"><code class="hljs language-typescript"><span class="hljs-comment">// scripts/migrate-strapi-to-payload.ts</span>
+<span class="hljs-keyword">import</span> fs <span class="hljs-keyword">from</span> <span class="hljs-string">'fs'</span>;
+<span class="hljs-keyword">import</span> { <span class="hljs-title class_">Payload</span> } <span class="hljs-keyword">from</span> <span class="hljs-string">'payload'</span>;
+
+<span class="hljs-keyword">async</span> <span class="hljs-keyword">function</span> <span class="hljs-title function_">migrate</span>(<span class="hljs-params"></span>) {
+  <span class="hljs-comment">// 1. Read Strapi export</span>
+  <span class="hljs-keyword">const</span> strapiData = <span class="hljs-title class_">JSON</span>.<span class="hljs-title function_">parse</span>(fs.<span class="hljs-title function_">readFileSync</span>(<span class="hljs-string">'strapi-export.json'</span>, <span class="hljs-string">'utf-8'</span>));
+  
+  <span class="hljs-comment">// 2. Initialize Payload client</span>
+  <span class="hljs-keyword">const</span> payload = <span class="hljs-keyword">await</span> <span class="hljs-title class_">Payload</span>.<span class="hljs-title function_">init</span>({
+    <span class="hljs-attr">secret</span>: process.<span class="hljs-property">env</span>.<span class="hljs-property">PAYLOAD_SECRET</span>,
+    <span class="hljs-attr">local</span>: <span class="hljs-literal">true</span>,
+  });
+  
+  <span class="hljs-comment">// 3. Transform and import each artifact</span>
+  <span class="hljs-keyword">for</span> (<span class="hljs-keyword">const</span> artifact <span class="hljs-keyword">of</span> strapiData.<span class="hljs-property">artifacts</span>) {
+    <span class="hljs-comment">// Validate data</span>
+    <span class="hljs-keyword">if</span> (!artifact.<span class="hljs-property">name</span> || !artifact.<span class="hljs-property">slug</span>) {
+      <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">warn</span>(<span class="hljs-string">`Skipping artifact <span class="hljs-subst">${artifact.id}</span>: missing required fields`</span>);
+      <span class="hljs-keyword">continue</span>;
+    }
+    
+    <span class="hljs-comment">// Upload media to R2</span>
+    <span class="hljs-keyword">const</span> mediaId = <span class="hljs-keyword">await</span> <span class="hljs-title function_">uploadMediaToPayload</span>(artifact.<span class="hljs-property">model_file</span>);
+    
+    <span class="hljs-comment">// Create artifact in Payload</span>
+    <span class="hljs-keyword">const</span> created = <span class="hljs-keyword">await</span> payload.<span class="hljs-title function_">create</span>({
+      <span class="hljs-attr">collection</span>: <span class="hljs-string">'artifacts'</span>,
+      <span class="hljs-attr">data</span>: {
+        <span class="hljs-attr">name</span>: artifact.<span class="hljs-property">name</span>,
+        <span class="hljs-attr">slug</span>: artifact.<span class="hljs-property">slug</span>,
+        <span class="hljs-attr">short_description</span>: artifact.<span class="hljs-property">short_description</span>,
+        <span class="hljs-attr">full_description</span>: artifact.<span class="hljs-property">full_description</span>,
+        <span class="hljs-attr">historical_period</span>: artifact.<span class="hljs-property">historical_period</span>,
+        <span class="hljs-comment">// ... map all fields</span>
+        <span class="hljs-attr">model_file</span>: mediaId,
+        <span class="hljs-attr">_status</span>: artifact.<span class="hljs-property">published</span> ? <span class="hljs-string">'published'</span> : <span class="hljs-string">'draft'</span>,
+        <span class="hljs-attr">workflowStatus</span>: artifact.<span class="hljs-property">status</span> || <span class="hljs-string">'draft'</span>,
+      },
+    });
+    
+    <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">`✅ Imported artifact: <span class="hljs-subst">${created.name}</span>`</span>);
+  }
+  
+  <span class="hljs-comment">// 4. Generate import report</span>
+  <span class="hljs-variable language_">console</span>.<span class="hljs-title function_">log</span>(<span class="hljs-string">'Migration complete!'</span>);
+}
+
+<span class="hljs-title function_">migrate</span>().<span class="hljs-title function_">catch</span>(<span class="hljs-variable language_">console</span>.<span class="hljs-property">error</span>);</code></pre><p><strong>Note:</strong> The actual Payload import API may vary. Check the installed Payload version for the correct import method.</p>
+<hr>
+<h2 id="13-backup-and-recovery">13. Backup and Recovery</h2>
+<h3 id="131-postgresql-backups">13.1 PostgreSQL Backups</h3>
+<pre tabindex="0"><code class="hljs language-bash"><span class="hljs-comment"># Daily backup script</span>
+<span class="hljs-comment">#!/bin/bash</span>
+BACKUP_DIR=<span class="hljs-string">"/backups/postgres"</span>
+DATE=$(<span class="hljs-built_in">date</span> +%Y%m%d_%H%M%S)
+FILENAME=<span class="hljs-string">"artifacts_<span class="hljs-variable">$DATE</span>.sql"</span>
+
+pg_dump -U artifacts -d artifacts &gt; <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/<span class="hljs-variable">$FILENAME</span>"</span>
+
+<span class="hljs-comment"># Compress</span>
+gzip <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/<span class="hljs-variable">$FILENAME</span>"</span>
+
+<span class="hljs-comment"># Upload to off-server location</span>
+rclone copy <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>/<span class="hljs-variable">$FILENAME</span>.gz"</span> remote:backups/
+
+<span class="hljs-comment"># Keep last 30 days</span>
+find <span class="hljs-string">"<span class="hljs-variable">$BACKUP_DIR</span>"</span> -name <span class="hljs-string">"*.sql.gz"</span> -mtime +30 -delete</code></pre><h3 id="132-r2-backup-strategy">13.2 R2 Backup Strategy</h3>
+<ul>
+<li>Enable R2 versioning (keeps history of all file versions)</li>
+<li>Consider cross-region replication for critical assets</li>
+<li>Document recovery procedures</li>
+</ul>
+<h3 id="133-recovery-procedures">13.3 Recovery Procedures</h3>
+<pre tabindex="0"><code class="hljs language-markdown"><span class="hljs-section">## Recovery Procedures</span>
+
+<span class="hljs-section">### PostgreSQL Recovery</span>
+<span class="hljs-bullet">1.</span> Stop Payload and Express services
+<span class="hljs-bullet">2.</span> Restore database from latest backup
+<span class="hljs-bullet">3.</span> Start services
+
+<span class="hljs-section">### R2 Recovery</span>
+<span class="hljs-bullet">1.</span> If a file is deleted, restore from version history
+<span class="hljs-bullet">2.</span> If bucket is lost, restore from backup location
+
+<span class="hljs-section">### Full System Recovery</span>
+<span class="hljs-bullet">1.</span> Provision new VPS
+<span class="hljs-bullet">2.</span> Clone repository
+<span class="hljs-bullet">3.</span> Set up environment variables
+<span class="hljs-bullet">4.</span> Restore PostgreSQL from latest backup
+<span class="hljs-bullet">5.</span> Restore R2 files
+<span class="hljs-bullet">6.</span> Start services</code></pre><h3 id="134-backup-requirements">13.4 Backup Requirements</h3>
+<table>
+<thead>
+<tr>
+<th>Item</th>
+<th>Requirement</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>PostgreSQL</strong></td>
+<td>Daily automated backup, 30-day retention</td>
+</tr>
+<tr>
+<td><strong>Off-server location</strong></td>
+<td>Copy backups to separate location</td>
+</tr>
+<tr>
+<td><strong>Restore testing</strong></td>
+<td>Test restore procedure quarterly</td>
+</tr>
+<tr>
+<td><strong>R2 media</strong></td>
+<td>Use versioning or separate backup</td>
+</tr>
+<tr>
+<td><strong>Recovery procedures</strong></td>
+<td>Document for Payload, Express, PostgreSQL, R2</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="14-handover-and-documentation">14. Handover and Documentation</h2>
+<h3 id="141-repository-structure">14.1 Repository Structure</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">artifacts-project/
+├── mobile-app/
+│   ├── Assets/
+│   ├── Packages/
+│   ├── ProjectSettings/
+│   └── README.md
+│
+├── payload-cms/
+│   ├── src/
+│   │   ├── collections/
+│   │   │   ├── Artifacts.ts
+│   │   │   ├── Exhibits.ts
+│   │   │   ├── Achievements.ts
+│   │   │   └── Reports.ts
+│   │   ├── globals/
+│   │   ├── fields/
+│   │   ├── hooks/
+│   │   ├── plugins/
+│   │   └── payload.config.ts
+│   ├── Dockerfile
+│   ├── package.json
+│   └── README.md
+│
+├── express-api/
+│   ├── src/
+│   │   ├── config/
+│   │   ├── routes/
+│   │   ├── controllers/
+│   │   ├── services/
+│   │   ├── repositories/
+│   │   ├── middleware/
+│   │   ├── validators/
+│   │   └── app.ts
+│   ├── tests/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── README.md
+│
+├── public-website/
+│   ├── src/
+│   ├── Dockerfile
+│   ├── package.json
+│   └── README.md
+│
+├── infrastructure/
+│   ├── docker-compose.yml
+│   ├── Caddyfile
+│   ├── backups/
+│   └── README.md
+│
+├── database/
+│   ├── migrations/
+│   ├── seed-data/
+│   └── README.md
+│
+├── documentation/
+│   ├── ARCHITECTURE.md
+│   ├── INSTALLATION.md
+│   ├── DEPLOYMENT.md
+│   ├── DATABASE.md
+│   ├── API.md
+│   ├── CMS_ADMIN_GUIDE.md
+│   ├── ANALYTICS_GUIDE.md
+│   ├── MOBILE_APP_GUIDE.md
+│   ├── TROUBLESHOOTING.md
+│   ├── BACKUP_AND_RESTORE.md
+│   └── HANDOVER.md
+│
+├── .env.example
+├── .gitignore
+└── README.md</code></pre><h3 id="142-required-documentation">14.2 Required Documentation</h3>
+<table>
+<thead>
+<tr>
+<th>Document</th>
+<th>Audience</th>
+<th>Purpose</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>ARCHITECTURE.md</strong></td>
+<td>Developers</td>
+<td>System design explanation</td>
+</tr>
+<tr>
+<td><strong>INSTALLATION.md</strong></td>
+<td>Developers</td>
+<td>Getting started guide</td>
+</tr>
+<tr>
+<td><strong>DEPLOYMENT.md</strong></td>
+<td>DevOps</td>
+<td>Deployment steps</td>
+</tr>
+<tr>
+<td><strong>DATABASE.md</strong></td>
+<td>Developers</td>
+<td>Database schema and migrations</td>
+</tr>
+<tr>
+<td><strong>API.md</strong></td>
+<td>Developers</td>
+<td>API endpoint documentation</td>
+</tr>
+<tr>
+<td><strong>CMS_ADMIN_GUIDE.md</strong></td>
+<td>Museum Staff</td>
+<td>Non-technical admin manual</td>
+</tr>
+<tr>
+<td><strong>ANALYTICS_GUIDE.md</strong></td>
+<td>Museum Staff</td>
+<td>Understanding analytics</td>
+</tr>
+<tr>
+<td><strong>MOBILE_APP_GUIDE.md</strong></td>
+<td>Visitors</td>
+<td>How to use the app</td>
+</tr>
+<tr>
+<td><strong>TROUBLESHOOTING.md</strong></td>
+<td>All</td>
+<td>Common issues and fixes</td>
+</tr>
+<tr>
+<td><strong>BACKUP_AND_RESTORE.md</strong></td>
+<td>Administrators</td>
+<td>Backup procedures</td>
+</tr>
+<tr>
+<td><strong>HANDOVER.md</strong></td>
+<td>Future maintainers</td>
+<td>Complete handover guide</td>
+</tr>
+</tbody></table>
+<h3 id="143-account-ownership">14.3 Account Ownership</h3>
+<p><strong>Critical:</strong> Don't create infrastructure using student personal email accounts if the museum will eventually own it.</p>
+<pre tabindex="0"><code class="hljs language-plaintext">Where possible:
+  Museum/Institutional Account
+        ↓
+    GitHub
+        ↓
+    Cloudflare
+        ↓
+    Hosting
+        ↓
+    Database</code></pre><p><strong>Security Note:</strong> Credentials and recovery details should be stored in a secure password manager, not in GitHub.</p>
+<hr>
+<h2 id="15-development-roadmap">15. Development Roadmap</h2>
+<h3 id="151-phase-1--foundation-week-1">15.1 Phase 1 — Foundation (Week 1)</h3>
+<p><strong>Goal:</strong> Get the architecture working.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up Payload with PostgreSQL</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up Express with PostgreSQL</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure Docker Compose</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify: Payload → PostgreSQL works</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify: Express → PostgreSQL works</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up separate schemas (museum_content, application_data)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Verify: Express reads Payload content via API</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Set up GitHub repository with CI</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Create .env.example and documentation structure</li>
+</ul>
+<h3 id="152-phase-2--cms-implementation-week-2-3">15.2 Phase 2 — CMS Implementation (Week 2-3)</h3>
+<p><strong>Goal:</strong> CMS fully functional.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Artifacts collection</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Exhibits collection</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Implement Achievements collection</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure R2 media storage</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Staff users and roles (Admin, Editor, Viewer)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Draft/publish workflow (_status)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">workflowStatus field</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Review comments</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Test with museum staff</li>
+</ul>
+<h3 id="153-phase-3--media-and-caching-week-3-4">15.3 Phase 3 — Media and Caching (Week 3-4)</h3>
+<p><strong>Goal:</strong> Media delivery works.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Configure Cloudflare R2</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Media upload to R2 from Payload</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">CDN delivery</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity downloads</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Local caching in Unity (Addressables)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Test with production-sized 3D models</li>
+</ul>
+<h3 id="154-phase-4--mobile-integration-week-4-5">15.4 Phase 4 — Mobile Integration (Week 4-5)</h3>
+<p><strong>Goal:</strong> Unity consumes CMS content.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches artifacts (published only)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches exhibits</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches achievements</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches difficulty configurations</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity fetches assessment configurations</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unity downloads media from CDN</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">End-to-end: CMS edit → Publish → Unity refresh → New content appears</li>
+</ul>
+<h3 id="155-phase-5--game-tracking-week-5-6">15.5 Phase 5 — Game Tracking (Week 5-6)</h3>
+<p><strong>Goal:</strong> Express records gameplay.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">User authentication (register, login, logout, refresh)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Game sessions (start, pause, complete)</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Game events logging</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Puzzle completion validation</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Pearl rewards with duplicate prevention</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Personal best times</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Achievements</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Assessments (pre/post)</li>
+</ul>
+<h3 id="156-phase-6--analytics-week-6-7">15.6 Phase 6 — Analytics (Week 6-7)</h3>
+<p><strong>Goal:</strong> Analytics dashboard.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Overview metrics</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">User analytics</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Exhibit analytics</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Artifact analytics</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Educational impact (pre/post learning gain)</li>
+</ul>
+<h3 id="157-phase-7--public-website-week-7-8">15.7 Phase 7 — Public Website (Week 7-8)</h3>
+<p><strong>Goal:</strong> Public showcase website.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Home page</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">About ARtifacts</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">About Pasig City Museum</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Exhibits listing</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Artifacts listing</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Artifact detail page</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Download link</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Contact</li>
+</ul>
+<h3 id="158-phase-8--testing-and-documentation-week-8-9">15.8 Phase 8 — Testing and Documentation (Week 8-9)</h3>
+<p><strong>Goal:</strong> System is tested and documented.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Unit tests</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Integration tests</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">System tests</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">User acceptance testing with museum</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">CMS Admin Guide</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Technical documentation</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Deployment documentation</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Handover documentation</li>
+</ul>
+<h3 id="159-phase-9--handover-week-10">15.9 Phase 9 — Handover (Week 10)</h3>
+<p><strong>Goal:</strong> System is handed over.</p>
+<ul>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Training sessions with museum staff</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Account ownership transfer</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Backup verification</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">Final documentation delivery</li>
+<li><input type="checkbox" disabled="" aria-label="Not completed">HANDOVER.md completed</li>
+</ul>
+<hr>
+<h2 id="16-what-not-to-build">16. What Not to Build</h2>
+<h3 id="161-infrastructure">16.1 Infrastructure</h3>
+<table>
+<thead>
+<tr>
+<th>Technology</th>
+<th>Reason to Skip</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Redis</td>
+<td>Unless you need caching/session infrastructure</td>
+</tr>
+<tr>
+<td>Kafka</td>
+<td>Absolutely unnecessary</td>
+</tr>
+<tr>
+<td>RabbitMQ</td>
+<td>Unnecessary</td>
+</tr>
+<tr>
+<td>Kubernetes</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Microservices</td>
+<td>No</td>
+</tr>
+<tr>
+<td>GraphQL</td>
+<td>Not necessary</td>
+</tr>
+<tr>
+<td>Dedicated analytics database</td>
+<td>Not initially</td>
+</tr>
+<tr>
+<td>Elasticsearch</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Firebase</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Auth0</td>
+<td>No</td>
+</tr>
+<tr>
+<td>AWS</td>
+<td>Not unless you have a compelling reason</td>
+</tr>
+<tr>
+<td>Paid analytics SaaS</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Separate CMS frontend</td>
+<td>No</td>
+</tr>
+<tr>
+<td>Separate analytics application</td>
+<td>No</td>
+</tr>
+</tbody></table>
+<h3 id="162-advanced-features-defer">16.2 Advanced Features (Defer)</h3>
+<table>
+<thead>
+<tr>
+<th>Feature</th>
+<th>When to Add</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Advanced analytics charts</td>
+<td>After MVP works</td>
+</tr>
+<tr>
+<td>Sentry error tracking</td>
+<td>If time permits</td>
+</tr>
+<tr>
+<td>Uptime Kuma monitoring</td>
+<td>After deployment</td>
+</tr>
+<tr>
+<td>Load testing (k6)</td>
+<td>Not needed initially</td>
+</tr>
+<tr>
+<td>OWASP ZAP automation</td>
+<td>Future security work</td>
+</tr>
+<tr>
+<td>Complex deployment automation</td>
+<td>Later if needed</td>
+</tr>
+<tr>
+<td>Full Strapi migration tooling</td>
+<td>Only if existing content must migrate</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="17-architecture-rules">17. Architecture Rules</h2>
+<table>
+<thead>
+<tr>
+<th>Rule</th>
+<th>Description</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Rule 1</strong></td>
+<td>Payload owns museum content</td>
+</tr>
+<tr>
+<td><strong>Rule 2</strong></td>
+<td>Express owns gameplay/application data</td>
+</tr>
+<tr>
+<td><strong>Rule 3</strong></td>
+<td>Unity owns the actual AR experience</td>
+</tr>
+<tr>
+<td><strong>Rule 4</strong></td>
+<td>Next.js owns the public web presentation</td>
+</tr>
+<tr>
+<td><strong>Rule 5</strong></td>
+<td>PostgreSQL is the primary database</td>
+</tr>
+<tr>
+<td><strong>Rule 6</strong></td>
+<td>R2 stores large media</td>
+</tr>
+<tr>
+<td><strong>Rule 7</strong></td>
+<td>REST is the initial integration protocol</td>
+</tr>
+<tr>
+<td><strong>Rule 8</strong></td>
+<td>Don't expose unpublished Payload content publicly</td>
+</tr>
+<tr>
+<td><strong>Rule 9</strong></td>
+<td>Don't put secrets in Unity</td>
+</tr>
+<tr>
+<td><strong>Rule 10</strong></td>
+<td>Don't introduce infrastructure unless it solves an actual problem</td>
+</tr>
+<tr>
+<td><strong>Rule 11</strong></td>
+<td>Everything important must be documented for handover</td>
+</tr>
+<tr>
+<td><strong>Rule 12</strong></td>
+<td>Every third-party dependency should have a fallback or migration path where practical</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="18-technology-stack-summary">18. Technology Stack Summary</h2>
+<table>
+<thead>
+<tr>
+<th>Layer</th>
+<th>Technology</th>
+<th>Role</th>
+<th>Priority</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Mobile</strong></td>
+<td>Unity LTS</td>
+<td>AR application</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>AR</strong></td>
+<td>AR Foundation + ARCore</td>
+<td>Android AR</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Mobile language</strong></td>
+<td>C#</td>
+<td>Unity development</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>CMS</strong></td>
+<td>Payload CMS</td>
+<td>Content/admin</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Web framework</strong></td>
+<td>Next.js</td>
+<td>CMS/public web</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Web language</strong></td>
+<td>TypeScript</td>
+<td>Web development</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Backend</strong></td>
+<td>Express.js</td>
+<td>Application/game API</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Backend language</strong></td>
+<td>TypeScript</td>
+<td>Backend</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Database</strong></td>
+<td>PostgreSQL 16+</td>
+<td>Persistent data</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Payload DB</strong></td>
+<td>Payload PostgreSQL adapter</td>
+<td>CMS database</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Express ORM</strong></td>
+<td>Drizzle ORM</td>
+<td>Express database access</td>
+<td>Recommended</td>
+</tr>
+<tr>
+<td><strong>Storage</strong></td>
+<td>Cloudflare R2</td>
+<td>3D/audio/image storage</td>
+<td>Recommended</td>
+</tr>
+<tr>
+<td><strong>CDN</strong></td>
+<td>Cloudflare</td>
+<td>Asset delivery</td>
+<td>Recommended</td>
+</tr>
+<tr>
+<td><strong>API</strong></td>
+<td>REST</td>
+<td>System integration</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>Containerization</strong></td>
+<td>Docker Compose</td>
+<td>Reproducible deployment</td>
+<td>Recommended</td>
+</tr>
+<tr>
+<td><strong>Version control</strong></td>
+<td>Git + GitHub</td>
+<td>Source management</td>
+<td>Required</td>
+</tr>
+<tr>
+<td><strong>CI/CD</strong></td>
+<td>GitHub Actions</td>
+<td>Automated testing/building</td>
+<td>Recommended</td>
+</tr>
+<tr>
+<td><strong>Monitoring</strong></td>
+<td>Sentry</td>
+<td>Error tracking</td>
+<td>Optional</td>
+</tr>
+<tr>
+<td><strong>Package manager</strong></td>
+<td>pnpm</td>
+<td>JS dependencies</td>
+<td>Recommended</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="19-academic-defense">19. Academic Defense</h2>
+<h3 id="191-architecture-explanation">19.1 Architecture Explanation</h3>
+<pre tabindex="0"><code class="hljs language-plaintext">┌─────────────────────────────────────────────────────────┐
+│  Separation of Concerns                               │
+├─────────────────────────────────────────────────────────┤
+│  Presentation Layer                                   │
+│  ├── Unity (Mobile AR)                               │
+│  ├── Next.js (Public Website)                        │
+│  └── Payload Admin (CMS Interface)                   │
+├─────────────────────────────────────────────────────────┤
+│  Application Layer                                    │
+│  ├── Express API (Game/User Logic)                   │
+│  └── Payload API (Content)                           │
+├─────────────────────────────────────────────────────────┤
+│  Data Layer                                           │
+│  ├── PostgreSQL (Structured Data)                    │
+│  └── Cloudflare R2 (Large Media)                     │
+└─────────────────────────────────────────────────────────┘</code></pre><h3 id="192-why-this-architecture">19.2 Why This Architecture</h3>
+<ol>
+<li><strong>Separation of concerns</strong> — Each layer has a single responsibility</li>
+<li><strong>Open-source first</strong> — All core components are MIT-licensed</li>
+<li><strong>Portable</strong> — No vendor lock-in; works on any hosting</li>
+<li><strong>Cost-effective</strong> — Free tiers for the initial deployment</li>
+<li><strong>Maintainable</strong> — Standard technologies; easy for future developers</li>
+<li><strong>Handover-ready</strong> — Documentation is a first-class requirement</li>
+</ol>
+<h3 id="193-project-goal">19.3 Project Goal</h3>
+<blockquote>
+<p>"Develop an open, maintainable, and cost-efficient three-interface cultural heritage platform consisting of an Android AR application, a customized content management and analytics system, and a public showcase website, with a focus on institutional usability, content portability, and sustainable handover."</p>
+</blockquote>
+<hr>
+<h2 id="20-implementation-conditions">20. Implementation Conditions</h2>
+<p>Based on the architecture review, the following conditions must be addressed before production:</p>
+<table>
+<thead>
+<tr>
+<th>Condition</th>
+<th>Status</th>
+<th>Notes</th>
+</tr>
+</thead>
+<tbody><tr>
+<td><strong>Database ownership</strong></td>
+<td>Required</td>
+<td>Use separate schemas and database users</td>
+</tr>
+<tr>
+<td><strong>Report ownership</strong></td>
+<td>Required</td>
+<td>Express owns reports; Payload displays them</td>
+</tr>
+<tr>
+<td><strong>Two publication concepts</strong></td>
+<td>Required</td>
+<td>Use <code>_status</code> + <code>workflowStatus</code></td>
+</tr>
+<tr>
+<td><strong>API routing clarification</strong></td>
+<td>Required</td>
+<td>Document slug-based queries</td>
+</tr>
+<tr>
+<td><strong>Unity API keys</strong></td>
+<td>Required</td>
+<td>Don't treat as secret; use published-only access</td>
+</tr>
+<tr>
+<td><strong>Docker deployment</strong></td>
+<td>Required</td>
+<td>Add Next.js service or deploy separately</td>
+</tr>
+<tr>
+<td><strong>CI configuration</strong></td>
+<td>Required</td>
+<td>Complete GitHub Actions workflow</td>
+</tr>
+<tr>
+<td><strong>Migration script</strong></td>
+<td>Required</td>
+<td>Validate, preserve relationships, report</td>
+</tr>
+<tr>
+<td><strong>Backup details</strong></td>
+<td>Required</td>
+<td>Document frequency, retention, restore testing</td>
+</tr>
+<tr>
+<td><strong>Account security</strong></td>
+<td>Required</td>
+<td>Use password manager, not GitHub</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="appendix-a-dry-run-notes">Appendix A: Dry Run Notes</h2>
+<h3 id="current-trial-project-status">Current Trial Project Status</h3>
+<p>A trial Payload project has been started in VS Code to validate the architecture. This dry run serves to:</p>
+<ul>
+<li>Test Payload + PostgreSQL connectivity</li>
+<li>Validate collections and relationships</li>
+<li>Confirm the development workflow</li>
+<li>Identify any integration issues early</li>
+</ul>
+<h3 id="observations-from-dry-run">Observations from Dry Run</h3>
+<p><em>To be filled during development.</em></p>
+<h3 id="recommended-next-steps">Recommended Next Steps</h3>
+<ol>
+<li>Complete Payload dry run</li>
+<li>Confirm Payload connects to PostgreSQL</li>
+<li>Test published and draft content access</li>
+<li>Finalize Payload collections and relationships</li>
+<li>Add staff roles and workflow status</li>
+<li>Configure R2 media storage</li>
+<li>Build Express endpoints</li>
+<li>Test Express reading Payload content</li>
+<li>Connect simple Unity test client</li>
+<li>Build analytics MVP</li>
+<li>Build public website</li>
+<li>Perform museum staff testing</li>
+</ol>
+<hr>
+<h2 id="appendix-b-key-decision-log">Appendix B: Key Decision Log</h2>
+<table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Decision</th>
+<th>Rationale</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Aug 29, 2026</td>
+<td>Switch from Strapi to Payload</td>
+<td>Free cloud plan discontinued; better UI customization and analytics</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Keep Express backend</td>
+<td>No rewrite needed; separation of concerns</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Use Cloudflare R2 for media</td>
+<td>Free tier, free egress, CDN included</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Separate database schemas</td>
+<td>Clear ownership; prevents accidental coupling</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Reports owned by Express</td>
+<td>User-generated application activity</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Use <code>_status</code> + <code>workflowStatus</code></td>
+<td>Respects Payload's native system</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>REST over GraphQL</td>
+<td>Simpler, sufficient for needs</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Analytics in PostgreSQL + Express</td>
+<td>No need for dedicated analytics SaaS</td>
+</tr>
+<tr>
+<td>Aug 29, 2026</td>
+<td>Documentation as first-class requirement</td>
+<td>Handover is critical for museum</td>
+</tr>
+</tbody></table>
+<hr>
+<h2 id="references">References</h2>
+<table>
+<thead>
+<tr>
+<th>Resource</th>
+<th>Link</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>Payload Documentation</td>
+<td><a href="https://payloadcms.com/docs">https://payloadcms.com/docs</a></td>
+</tr>
+<tr>
+<td>Payload PostgreSQL</td>
+<td><a href="https://payloadcms.com/docs/database/postgres">https://payloadcms.com/docs/database/postgres</a></td>
+</tr>
+<tr>
+<td>Payload Storage Adapters</td>
+<td><a href="https://payloadcms.com/docs/plugins/storage">https://payloadcms.com/docs/plugins/storage</a></td>
+</tr>
+<tr>
+<td>Payload Access Control</td>
+<td><a href="https://payloadcms.com/docs/access-control/overview">https://payloadcms.com/docs/access-control/overview</a></td>
+</tr>
+<tr>
+<td>Payload Versions</td>
+<td><a href="https://payloadcms.com/docs/versions/overview">https://payloadcms.com/docs/versions/overview</a></td>
+</tr>
+<tr>
+<td>Next.js Documentation</td>
+<td><a href="https://nextjs.org/docs">https://nextjs.org/docs</a></td>
+</tr>
+<tr>
+<td>Drizzle ORM</td>
+<td><a href="https://orm.drizzle.team">https://orm.drizzle.team</a></td>
+</tr>
+<tr>
+<td>Cloudflare R2 Pricing</td>
+<td><a href="https://developers.cloudflare.com/r2/pricing/">https://developers.cloudflare.com/r2/pricing/</a></td>
+</tr>
+<tr>
+<td>GitHub Actions Billing</td>
+<td><a href="https://docs.github.com/en/billing/managing-billing-for-github-actions">https://docs.github.com/en/billing/managing-billing-for-github-actions</a></td>
+</tr>
+</tbody></table>
+<hr>
+<p><strong>Document Version:</strong> 3.0 (Final)<br><strong>Status:</strong> ✅ Approved Target Architecture<br><strong>Last Updated:</strong> August 29, 2026<br><strong>Next Review:</strong> After Phase 1 completion (Week 1)</p>
