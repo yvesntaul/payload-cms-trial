@@ -1,59 +1,91 @@
-import { headers as getHeaders } from 'next/headers.js'
-import Image from 'next/image'
-import { getPayload } from 'payload'
-import React from 'react'
-import { fileURLToPath } from 'url'
+﻿import './styles.css'
 
-import config from '@/payload.config'
-import './styles.css'
+type Artifact = {
+  id: string
+  name: string
+  slug: string
+  shortDescription?: string
+  thumbnail?: { url?: string; alt?: string }
+}
+
+const payloadApiUrl = process.env.PAYLOAD_API_URL || 'http://localhost:3000/api'
+
+async function getPublishedArtifacts(): Promise<Artifact[]> {
+  try {
+    const response = await fetch(`${payloadApiUrl}/artifacts?where[_status][equals]=published&limit=3`, {
+      next: { revalidate: 60 },
+    })
+    if (!response.ok) return []
+    const data = (await response.json()) as { docs?: Artifact[] }
+    return data.docs || []
+  } catch {
+    return []
+  }
+}
+
+export const metadata = {
+  description: 'ARtifacts connects Pasig City Museum stories with an augmented reality experience.',
+  title: 'ARtifacts | Pasig City Museum',
+}
 
 export default async function HomePage() {
-  const headers = await getHeaders()
-  const payloadConfig = await config
-  const payload = await getPayload({ config: payloadConfig })
-  const { user } = await payload.auth({ headers })
-
-  const fileURL = `vscode://file/${fileURLToPath(import.meta.url)}`
+  const artifacts = await getPublishedArtifacts()
 
   return (
-    <div className="home">
-      <div className="content">
-        <picture>
-          <source srcSet="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg" />
-          <Image
-            alt="Payload Logo"
-            height={65}
-            src="https://raw.githubusercontent.com/payloadcms/payload/3.x/packages/ui/src/assets/payload-favicon.svg"
-            width={65}
-          />
-        </picture>
-        {!user && <h1>Welcome to your new project.</h1>}
-        {user && <h1>Welcome back, {user.email}</h1>}
-        <div className="links">
-          <a
-            className="admin"
-            href={payloadConfig.routes.admin}
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Go to admin panel
-          </a>
-          <a
-            className="docs"
-            href="https://payloadcms.com/docs"
-            rel="noopener noreferrer"
-            target="_blank"
-          >
-            Documentation
-          </a>
-        </div>
-      </div>
-      <div className="footer">
-        <p>Update this page by editing</p>
-        <a className="codeLink" href={fileURL}>
-          <code>app/(frontend)/page.tsx</code>
+    <div className="site-shell">
+      <header className="site-nav">
+        <a className="brand" href="/" aria-label="ARtifacts home">
+          <span className="brand__mark" aria-hidden="true">A</span>
+          <span>ARtifacts</span>
         </a>
-      </div>
+        <a className="site-nav__admin" href="/admin">Admin panel <span aria-hidden="true">↗</span></a>
+      </header>
+
+      <main>
+        <section className="welcome">
+          <p className="kicker">Pasig City Museum - Content Management System</p>
+          <h1>Welcome to ARtifacts.</h1>
+          <p className="welcome__copy">
+            A digital companion for discovering the objects and stories that make Pasig’s history feel close enough to touch.
+          </p>
+          <a className="button button--primary" href="#collection">View the collection <span aria-hidden="true">↓</span></a>
+        </section>
+
+        <section className="collection" id="collection">
+          <div className="section-heading">
+            <div>
+              <p className="kicker">From the museum</p>
+              <h2>Featured artifacts</h2>
+            </div>
+            <p>Published content from the ARtifacts CMS.</p>
+          </div>
+          {artifacts.length > 0 ? (
+            <div className="artifact-list">
+              {artifacts.map((artifact) => (
+                <article className="artifact-item" key={artifact.id}>
+                  {artifact.thumbnail?.url && <img src={artifact.thumbnail.url} alt={artifact.thumbnail.alt || artifact.name} />}
+                  <div>
+                    <p className="artifact-item__slug">{artifact.slug}</p>
+                    <h3>{artifact.name}</h3>
+                    <p>{artifact.shortDescription}</p>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className="empty-state">
+              <h3>The collection is taking shape.</h3>
+              <p>Publish an artifact in the CMS and it will appear here automatically.</p>
+              <a className="button button--quiet" href="/admin/collections/artifacts">Open artifacts <span aria-hidden="true">↗</span></a>
+            </div>
+          )}
+        </section>
+      </main>
+
+      <footer className="site-footer">
+        <span>ARtifacts / Pasig City Museum</span>
+        <span>Stories preserved. Perspectives opened.</span>
+      </footer>
     </div>
   )
 }

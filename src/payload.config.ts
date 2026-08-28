@@ -10,7 +10,6 @@ import { Media } from './collections/Media'
 import { Achievements } from './collections/Achievements'
 import { Artifacts } from './collections/Artifacts'
 import { Exhibits } from './collections/Exhibits'
-import { Reports } from './collections/Reports'
 
 const filename = fileURLToPath(import.meta.url)
 const dirname = path.dirname(filename)
@@ -18,11 +17,16 @@ const dirname = path.dirname(filename)
 export default buildConfig({
   admin: {
     user: Users.slug,
+    components: {
+      beforeDashboard: ['./components/WelcomeDashboard'],
+      graphics: { Icon: './components/WelcomeDashboard#ArtifactsMark', Logo: './components/WelcomeDashboard#ArtifactsMark' },
+      logout: { Button: './components/LogoutButton' },
+    },
     importMap: {
       baseDir: path.resolve(dirname),
     },
   },
-  collections: [Users, Media, Artifacts, Exhibits, Achievements, Reports],
+  collections: [Users, Media, Artifacts, Exhibits, Achievements],
   editor: lexicalEditor(),
   secret: process.env.PAYLOAD_SECRET || '',
   typescript: {
@@ -36,4 +40,10 @@ export default buildConfig({
   sharp,
   plugins: [],
 })
+
+
+
+
+
+
 

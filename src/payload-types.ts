@@ -72,7 +72,6 @@ export interface Config {
     artifacts: Artifact;
     exhibits: Exhibit;
     achievements: Achievement;
-    reports: Report;
     'payload-kv': PayloadKv;
     'payload-locked-documents': PayloadLockedDocument;
     'payload-preferences': PayloadPreference;
@@ -85,7 +84,6 @@ export interface Config {
     artifacts: ArtifactsSelect<false> | ArtifactsSelect<true>;
     exhibits: ExhibitsSelect<false> | ExhibitsSelect<true>;
     achievements: AchievementsSelect<false> | AchievementsSelect<true>;
-    reports: ReportsSelect<false> | ReportsSelect<true>;
     'payload-kv': PayloadKvSelect<false> | PayloadKvSelect<true>;
     'payload-locked-documents': PayloadLockedDocumentsSelect<false> | PayloadLockedDocumentsSelect<true>;
     'payload-preferences': PayloadPreferencesSelect<false> | PayloadPreferencesSelect<true>;
@@ -131,6 +129,7 @@ export interface UserAuthOperations {
  */
 export interface User {
   id: number;
+  role: 'admin' | 'editor' | 'viewer';
   updatedAt: string;
   createdAt: string;
   email: string;
@@ -200,7 +199,7 @@ export interface Artifact {
   thumbnail: number | Media;
   modelFile?: (number | null) | Media;
   audioNarration?: (number | null) | Media;
-  status: 'draft' | 'submitted' | 'approved' | 'rejected' | 'published' | 'archived';
+  workflowStatus: 'draft' | 'submitted' | 'approved' | 'rejected' | 'archived';
   publishedAt?: string | null;
   assessmentQuestion?: string | null;
   assessmentOptions?:
@@ -235,6 +234,7 @@ export interface Artifact {
   };
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -262,10 +262,11 @@ export interface Exhibit {
   thumbnail?: (number | null) | Media;
   historicalPeriod?: string | null;
   artifacts?: (number | Artifact)[] | null;
-  status: 'draft' | 'published';
+  workflowStatus: 'draft' | 'submitted' | 'approved' | 'rejected' | 'archived';
   sortOrder?: number | null;
   updatedAt: string;
   createdAt: string;
+  _status?: ('draft' | 'published') | null;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -278,24 +279,6 @@ export interface Achievement {
   icon?: (number | null) | Media;
   requirementType: 'pearls_collected' | 'exhibits_completed' | 'perfect_score';
   requirementValue: number;
-  updatedAt: string;
-  createdAt: string;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "reports".
- */
-export interface Report {
-  id: number;
-  userId: string;
-  category: 'bug_report' | 'feature_suggestion' | 'artifact_info_error';
-  description: string;
-  deviceInfo?: {
-    model?: string | null;
-    osVersion?: string | null;
-    appVersion?: string | null;
-  };
-  status: 'open' | 'in_progress' | 'resolved';
   updatedAt: string;
   createdAt: string;
 }
@@ -342,10 +325,6 @@ export interface PayloadLockedDocument {
     | ({
         relationTo: 'achievements';
         value: number | Achievement;
-      } | null)
-    | ({
-        relationTo: 'reports';
-        value: number | Report;
       } | null);
   globalSlug?: string | null;
   user: {
@@ -394,6 +373,7 @@ export interface PayloadMigration {
  * via the `definition` "users_select".
  */
 export interface UsersSelect<T extends boolean = true> {
+  role?: T;
   updatedAt?: T;
   createdAt?: T;
   email?: T;
@@ -445,7 +425,7 @@ export interface ArtifactsSelect<T extends boolean = true> {
   thumbnail?: T;
   modelFile?: T;
   audioNarration?: T;
-  status?: T;
+  workflowStatus?: T;
   publishedAt?: T;
   assessmentQuestion?: T;
   assessmentOptions?:
@@ -490,6 +470,7 @@ export interface ArtifactsSelect<T extends boolean = true> {
       };
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -502,10 +483,11 @@ export interface ExhibitsSelect<T extends boolean = true> {
   thumbnail?: T;
   historicalPeriod?: T;
   artifacts?: T;
-  status?: T;
+  workflowStatus?: T;
   sortOrder?: T;
   updatedAt?: T;
   createdAt?: T;
+  _status?: T;
 }
 /**
  * This interface was referenced by `Config`'s JSON-Schema
@@ -517,25 +499,6 @@ export interface AchievementsSelect<T extends boolean = true> {
   icon?: T;
   requirementType?: T;
   requirementValue?: T;
-  updatedAt?: T;
-  createdAt?: T;
-}
-/**
- * This interface was referenced by `Config`'s JSON-Schema
- * via the `definition` "reports_select".
- */
-export interface ReportsSelect<T extends boolean = true> {
-  userId?: T;
-  category?: T;
-  description?: T;
-  deviceInfo?:
-    | T
-    | {
-        model?: T;
-        osVersion?: T;
-        appVersion?: T;
-      };
-  status?: T;
   updatedAt?: T;
   createdAt?: T;
 }

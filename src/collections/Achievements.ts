@@ -1,9 +1,10 @@
 ﻿import type { CollectionConfig } from 'payload'
+import { isAdmin } from '../access/roles'
 
 export const Achievements: CollectionConfig = {
   slug: 'achievements',
   admin: { useAsTitle: 'name' },
-  access: { read: () => true },
+  access: { read: () => true, create: ({ req }) => isAdmin({ req }) || Boolean(req.user && 'role' in req.user && req.user.role === 'editor'), update: isAdmin, delete: isAdmin },
   fields: [
     { name: 'name', type: 'text', required: true },
     { name: 'description', type: 'textarea', required: true },
@@ -12,3 +13,5 @@ export const Achievements: CollectionConfig = {
     { name: 'requirementValue', type: 'number', required: true, min: 1 },
   ],
 }
+
+
