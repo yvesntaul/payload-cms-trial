@@ -21,7 +21,7 @@ export default function WelcomeDashboard() {
     <section className="artifacts-welcome" aria-labelledby="artifacts-welcome-title">
       <div className="artifacts-welcome__intro">
         <ArtifactsLogo />
-        <p className="artifacts-welcome__eyebrow">Pasig City Museum content studio</p>
+        <p className="artifacts-welcome__eyebrow">Pasig City Museum Content Management System</p>
         <h1 id="artifacts-welcome-title">Welcome to ARtifacts</h1>
         <p className="artifacts-welcome__lede">
           Your workspace for preserving stories, shaping exhibits, and preparing cultural content for the AR experience.
