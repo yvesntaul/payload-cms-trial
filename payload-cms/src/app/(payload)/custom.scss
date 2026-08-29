@@ -89,8 +89,17 @@ h6,
 }
 
 .btn--style-primary,
+.btn--style-primary:link,
+.btn--style-primary:visited,
+.btn--style-primary:focus,
+.btn--style-primary:active {
+  background-color: var(--artifacts-brown);
+  border-color: var(--artifacts-brown);
+  color: var(--artifacts-cream);
+}
+
 .btn--style-primary:hover,
-.btn--style-primary:focus {
+.btn--style-primary:focus-visible {
   background-color: var(--artifacts-peach);
   border-color: var(--artifacts-peach);
   color: var(--artifacts-brown);

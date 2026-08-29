@@ -11,7 +11,6 @@ export const Exhibits: CollectionConfig = {
     { name: 'slug', type: 'text', required: true, unique: true, index: true },
     { name: 'description', type: 'richText' },
     { name: 'thumbnail', type: 'upload', relationTo: 'media' },
-    { name: 'historicalPeriod', type: 'text' },
     { name: 'artifacts', type: 'relationship', relationTo: 'artifacts', hasMany: true },
     { name: 'workflowStatus', type: 'select', required: true, defaultValue: 'draft', options: ['draft', 'submitted', 'approved', 'rejected', 'archived'] },
     { name: 'sortOrder', type: 'number', defaultValue: 0 },

@@ -19,7 +19,7 @@ export default buildConfig({
     user: Users.slug,
     components: {
       beforeDashboard: ['./components/WelcomeDashboard'],
-      graphics: { Icon: './components/WelcomeDashboard#ArtifactsMark', Logo: './components/WelcomeDashboard#ArtifactsMark' },
+      graphics: { Icon: './components/WelcomeDashboard#ArtifactsMark', Logo: './components/WelcomeDashboard#ArtifactsLogo' },
       logout: { Button: './components/LogoutButton' },
     },
     importMap: {

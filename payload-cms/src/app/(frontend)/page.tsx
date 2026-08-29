@@ -4,7 +4,6 @@ type Artifact = {
   id: string
   name: string
   slug: string
-  shortDescription?: string
   thumbnail?: { url?: string; alt?: string }
 }
 
@@ -35,8 +34,7 @@ export default async function HomePage() {
     <div className="site-shell">
       <header className="site-nav">
         <a className="brand" href="/" aria-label="ARtifacts home">
-          <span className="brand__mark" aria-hidden="true">A</span>
-          <span>ARtifacts</span>
+          <img src="/assets/ARtifacts-FullLogo.png" alt="ARtifacts logo" className="brand__logo" />
         </a>
         <a className="site-nav__admin" href="/admin">Admin panel <span aria-hidden="true">↗</span></a>
       </header>
@@ -67,7 +65,6 @@ export default async function HomePage() {
                   <div>
                     <p className="artifact-item__slug">{artifact.slug}</p>
                     <h3>{artifact.name}</h3>
-                    <p>{artifact.shortDescription}</p>
                   </div>
                 </article>
               ))}

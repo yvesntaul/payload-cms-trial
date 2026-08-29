@@ -9,12 +9,7 @@ export const Artifacts: CollectionConfig = {
   fields: [
     { name: 'name', type: 'text', required: true },
     { name: 'slug', type: 'text', required: true, unique: true, index: true },
-    { name: 'shortDescription', type: 'textarea', required: true },
-    { name: 'fullDescription', type: 'richText' },
-    { name: 'historicalPeriod', type: 'text' },
-    { name: 'dateOrTimePeriod', type: 'text' },
-    { name: 'origin', type: 'text' },
-    { name: 'culturalSignificance', type: 'textarea' },
+    { name: 'fullDescription', type: 'richText', required: true },
     { name: 'thumbnail', type: 'upload', relationTo: 'media', required: true },
     { name: 'modelFile', type: 'upload', relationTo: 'media' },
     { name: 'audioNarration', type: 'upload', relationTo: 'media' },

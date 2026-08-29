@@ -176,8 +176,7 @@ export interface Artifact {
   id: number;
   name: string;
   slug: string;
-  shortDescription: string;
-  fullDescription?: {
+  fullDescription: {
     root: {
       type: string;
       children: {
@@ -191,11 +190,7 @@ export interface Artifact {
       version: number;
     };
     [k: string]: unknown;
-  } | null;
-  historicalPeriod?: string | null;
-  dateOrTimePeriod?: string | null;
-  origin?: string | null;
-  culturalSignificance?: string | null;
+  };
   thumbnail: number | Media;
   modelFile?: (number | null) | Media;
   audioNarration?: (number | null) | Media;
@@ -260,7 +255,6 @@ export interface Exhibit {
     [k: string]: unknown;
   } | null;
   thumbnail?: (number | null) | Media;
-  historicalPeriod?: string | null;
   artifacts?: (number | Artifact)[] | null;
   workflowStatus: 'draft' | 'submitted' | 'approved' | 'rejected' | 'archived';
   sortOrder?: number | null;
@@ -416,12 +410,7 @@ export interface MediaSelect<T extends boolean = true> {
 export interface ArtifactsSelect<T extends boolean = true> {
   name?: T;
   slug?: T;
-  shortDescription?: T;
   fullDescription?: T;
-  historicalPeriod?: T;
-  dateOrTimePeriod?: T;
-  origin?: T;
-  culturalSignificance?: T;
   thumbnail?: T;
   modelFile?: T;
   audioNarration?: T;
@@ -481,7 +470,6 @@ export interface ExhibitsSelect<T extends boolean = true> {
   slug?: T;
   description?: T;
   thumbnail?: T;
-  historicalPeriod?: T;
   artifacts?: T;
   workflowStatus?: T;
   sortOrder?: T;

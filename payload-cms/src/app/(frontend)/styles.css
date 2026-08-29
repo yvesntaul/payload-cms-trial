@@ -3,11 +3,13 @@
 html { scroll-behavior: smooth; background: var(--cream); }
 body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
 a { color: inherit; }
-.site-shell { max-width: 1440px; min-height: 100vh; margin: 0 auto; background: var(--cream); }
-.site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.3rem clamp(1.25rem, 6vw, 6rem); border-bottom: 1px solid var(--line); }
-.brand { display: inline-flex; align-items: center; gap: .7rem; color: var(--brown); font-family: var(--display); font-size: 1.45rem; text-decoration: none; }
-.brand__mark { display: grid; width: 2rem; height: 2rem; transform: rotate(45deg); place-items: center; border: 2px solid var(--brown); font-family: var(--body); font-size: .9rem; font-weight: 700; }
-.site-nav__admin { padding: .55rem .8rem; border: 1px solid var(--brown); font-size: .8rem; font-weight: 700; text-decoration: none; }
+.site-shell { position: relative; max-width: 1440px; min-height: 100vh; margin: 0 auto; background: rgba(246, 225, 199, 0.9); }
+.site-shell::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(246, 225, 199, 0.63), rgba(246, 225, 199, 0.7)), url('/assets/PasigCityMuseum.jpg'); background-size: cover; background-position: center; opacity: 0.24; z-index: 0; pointer-events: none; }
+.site-shell > * { position: relative; z-index: 1; }
+.site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.3rem clamp(1.25rem, 6vw, 6rem); border-bottom: 1px solid var(--line); background: rgba(246, 225, 199, 0.78); }
+.brand { display: inline-flex; align-items: center; text-decoration: none; }
+.brand__logo { display: block; width: min(220px, 42vw); height: auto; }
+.site-nav__admin { padding: .55rem .8rem; border: 1px solid var(--brown); font-size: .8rem; font-weight: 700; text-decoration: none; background: rgba(246, 225, 199, 0.8); }
 .site-nav__admin:hover { background: var(--brown); color: var(--cream); }
 .welcome { max-width: 900px; padding: clamp(5rem, 13vw, 11rem) clamp(1.25rem, 12vw, 12rem) clamp(5rem, 10vw, 9rem); }
 .kicker { margin: 0 0 1rem; color: #a85b2c; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }

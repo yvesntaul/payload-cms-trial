@@ -23,6 +23,7 @@ import { BoldFeatureClient as BoldFeatureClient_e70f5e05f09f93e00b997edb1ef0c864
 import { ItalicFeatureClient as ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864 } from '@payloadcms/richtext-lexical/client'
 import { default as default_6685bed4c87753a1d24e02a7f7d088ee } from '../../../components/LogoutButton'
 import { ArtifactsMark as ArtifactsMark_12b59f7ea24bb59f7948990a04841b8d } from '../../../components/WelcomeDashboard'
+import { ArtifactsLogo as ArtifactsLogo_12b59f7ea24bb59f7948990a04841b8d } from '../../../components/WelcomeDashboard'
 import { default as default_12b59f7ea24bb59f7948990a04841b8d } from '../../../components/WelcomeDashboard'
 import { CollectionCards as CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1 } from '@payloadcms/next/rsc'
 
@@ -53,6 +54,7 @@ export const importMap = {
   "@payloadcms/richtext-lexical/client#ItalicFeatureClient": ItalicFeatureClient_e70f5e05f09f93e00b997edb1ef0c864,
   "./components/LogoutButton#default": default_6685bed4c87753a1d24e02a7f7d088ee,
   "./components/WelcomeDashboard#ArtifactsMark": ArtifactsMark_12b59f7ea24bb59f7948990a04841b8d,
+  "./components/WelcomeDashboard#ArtifactsLogo": ArtifactsLogo_12b59f7ea24bb59f7948990a04841b8d,
   "./components/WelcomeDashboard#default": default_12b59f7ea24bb59f7948990a04841b8d,
   "@payloadcms/next/rsc#CollectionCards": CollectionCards_f9c02e79a4aed9a3924487c0cd4cafb1
 }
