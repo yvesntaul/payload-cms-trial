@@ -1,0 +1,38 @@
+﻿:root { --brown:#372a28; --peach:#f5a164; --cream:#f6e1c7; --ink:#241b1a; --line:#d5b99d; --muted:#775f55; --display:'Times New Roman',Times,serif; --body:'DM Sans',sans-serif; }
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; background: var(--cream); }
+body { margin: 0; background: var(--cream); color: var(--ink); font-family: var(--body); font-size: 16px; line-height: 1.5; }
+a { color: inherit; }
+.site-shell { position: relative; max-width: 1440px; min-height: 100vh; margin: 0 auto; background: rgba(246, 225, 199, 0.9); }
+.site-shell::before { content: ''; position: fixed; inset: 0; background-image: linear-gradient(rgba(246, 225, 199, 0.63), rgba(246, 225, 199, 0.7)), url('/assets/PasigCityMuseum.jpg'); background-size: cover; background-position: center; opacity: 0.24; z-index: 0; pointer-events: none; }
+.site-shell > * { position: relative; z-index: 1; }
+.site-nav { display: flex; align-items: center; justify-content: space-between; padding: 1.3rem clamp(1.25rem, 6vw, 6rem); border-bottom: 1px solid var(--line); background: rgba(246, 225, 199, 0.78); }
+.brand { display: inline-flex; align-items: center; text-decoration: none; }
+.brand__logo { display: block; width: min(220px, 42vw); height: auto; }
+.site-nav__admin { padding: .55rem .8rem; border: 1px solid var(--brown); font-size: .8rem; font-weight: 700; text-decoration: none; background: rgba(246, 225, 199, 0.8); }
+.site-nav__admin:hover { background: var(--brown); color: var(--cream); }
+.welcome { max-width: 900px; padding: clamp(5rem, 13vw, 11rem) clamp(1.25rem, 12vw, 12rem) clamp(5rem, 10vw, 9rem); }
+.kicker { margin: 0 0 1rem; color: #a85b2c; font-size: .72rem; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; }
+h1, h2, h3 { margin: 0; font-family: var(--display); font-weight: 400; letter-spacing: 0; line-height: .98; }
+h1 { max-width: 760px; font-size: clamp(4rem, 10vw, 8rem); }
+h2 { font-size: clamp(2.8rem, 6vw, 5rem); }
+h3 { font-size: 2rem; }
+.welcome__copy { max-width: 500px; margin: 2rem 0; color: var(--muted); font-size: 1.1rem; }
+.button { display: inline-flex; align-items: center; gap: .8rem; padding: .85rem 1rem; font-size: .8rem; font-weight: 700; text-decoration: none; }
+.button--primary { background: var(--brown); color: var(--cream); }
+.button--primary:hover { background: #533e39; }
+.button--quiet { border: 1px solid var(--brown); }
+.button--quiet:hover { background: var(--brown); color: var(--cream); }
+.collection { padding: clamp(4rem, 8vw, 8rem) clamp(1.25rem, 12vw, 12rem); border-top: 1px solid var(--line); }
+.section-heading { display: flex; align-items: end; justify-content: space-between; gap: 2rem; margin-bottom: 3rem; }
+.section-heading > p { max-width: 250px; margin: 0; color: var(--muted); font-size: .85rem; }
+.artifact-list { border-top: 1px solid var(--line); }
+.artifact-item { display: grid; grid-template-columns: 160px 1fr; gap: 1.5rem; align-items: center; padding: 1.25rem 0; border-bottom: 1px solid var(--line); }
+.artifact-item img { width: 160px; aspect-ratio: 1; object-fit: cover; background: #ead2b7; }
+.artifact-item h3 { margin: .25rem 0 .5rem; }
+.artifact-item p { max-width: 550px; margin: 0; color: var(--muted); font-size: .85rem; }
+.artifact-item__slug { color: #a85b2c !important; font-size: .68rem !important; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
+.empty-state { padding: 2.5rem; border: 1px solid var(--line); background: #fff8ee; }
+.empty-state p { margin: .75rem 0 1.5rem; color: var(--muted); }
+.site-footer { display: flex; justify-content: space-between; gap: 1rem; padding: 1.5rem clamp(1.25rem, 6vw, 6rem); background: var(--brown); color: #d9bba0; font-size: .7rem; }
+@media (max-width: 650px) { .section-heading, .site-footer { align-items: flex-start; flex-direction: column; } .artifact-item { grid-template-columns: 90px 1fr; gap: 1rem; } .artifact-item img { width: 90px; } h1 { font-size: clamp(3.5rem, 17vw, 6rem); } }
